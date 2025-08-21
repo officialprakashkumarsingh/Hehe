@@ -133,7 +133,7 @@ class DiagramService extends ChangeNotifier {
   ];
 
   // Generate Mermaid diagram URL with multiple fallback services
-  static String generateDiagramUrl(String mermaidCode, {bool useFallback = false}) {
+  static String generateDiagramUrl(String mermaidCode, {bool useFallback = false, bool highQuality = false}) {
     try {
       // Clean and validate the code
       final cleanCode = _cleanMermaidCode(mermaidCode);
@@ -149,7 +149,9 @@ class DiagramService extends ChangeNotifier {
       } else {
         // Primary service: Mermaid.ink (official, faster)
         final encodedCode = base64.encode(utf8.encode(cleanCode));
-        return 'https://mermaid.ink/img/$encodedCode?type=png';
+        // Add high quality parameters for ultra HD export
+        final quality = highQuality ? '&width=3840&height=2160&scale=4' : '';
+        return 'https://mermaid.ink/img/$encodedCode?type=png$quality';
       }
     } catch (e) {
       print('Error generating diagram URL: $e');

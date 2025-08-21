@@ -13,6 +13,7 @@ class ChatInput extends StatefulWidget {
   final Function(String, {bool useWebSearch}) onSendMessage;
   final Function(String)? onGenerateImage;
   final Function(String)? onGenerateDiagram;
+  final Function(String)? onGeneratePresentation;
   final Function(String, String)? onVisionAnalysis;
   final VoidCallback? onStopStreaming;
   final VoidCallback? onTemplateRequest;
@@ -26,6 +27,7 @@ class ChatInput extends StatefulWidget {
     required this.onSendMessage,
     this.onGenerateImage,
     this.onGenerateDiagram,
+    this.onGeneratePresentation,
     this.onVisionAnalysis,
     this.onStopStreaming,
     this.onTemplateRequest,
@@ -47,6 +49,7 @@ class _ChatInputState extends State<ChatInput> {
   bool _webSearchEnabled = false;
   bool _imageGenerationMode = false;
   bool _diagramGenerationMode = false;
+  bool _presentationGenerationMode = false;
   String? _pendingImageData;
   Timer? _typingTimer;
 
@@ -213,8 +216,10 @@ class _ChatInputState extends State<ChatInput> {
                               : _imageGenerationMode 
                                   ? 'Describe the image you want to generate...'
                                   : _diagramGenerationMode
-                                      ? 'Describe the diagram you want to create...' 
-                                      : 'Type your message...') 
+                                      ? 'Describe the diagram you want to create...'
+                                      : _presentationGenerationMode
+                                          ? 'Describe the presentation topic...' 
+                                          : 'Type your message...') 
                           : 'Select a model to start chatting',
                       hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
@@ -248,7 +253,7 @@ class _ChatInputState extends State<ChatInput> {
                             : Theme.of(context).colorScheme.outline.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(24),
                     child: InkWell(
-                      onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : (_diagramGenerationMode ? _handleDiagramGenerationDirect : _handleSend)) : null),
+                      onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : (_diagramGenerationMode ? _handleDiagramGenerationDirect : (_presentationGenerationMode ? _handlePresentationGenerationDirect : _handleSend))) : null),
                       borderRadius: BorderRadius.circular(24),
                       child: Container(
                         width: 48,
@@ -257,8 +262,9 @@ class _ChatInputState extends State<ChatInput> {
                           widget.isLoading
                               ? Icons.stop_rounded
                               : (_imageGenerationMode ? Icons.auto_awesome_outlined 
-                                  : (_diagramGenerationMode ? Icons.account_tree_outlined 
-                                      : Icons.arrow_upward_rounded)),
+                                  : (_diagramGenerationMode ? Icons.account_tree_outlined
+                                      : (_presentationGenerationMode ? Icons.slideshow_outlined 
+                                          : Icons.arrow_upward_rounded))),
                           color: widget.isLoading
                               ? Colors.white
                               : (_canSend
@@ -308,6 +314,19 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
+  void _handlePresentationGenerationDirect() {
+    final prompt = _controller.text.trim();
+    if (prompt.isNotEmpty && widget.onGeneratePresentation != null) {
+      widget.onGeneratePresentation!(prompt);
+      _controller.clear();
+      setState(() {
+        _presentationGenerationMode = false;
+      });
+      _updateSendButton();
+      HapticFeedback.lightImpact();
+    }
+  }
+
   void _showExtensionsSheet() {
     showModalBottomSheet(
       context: context,
@@ -317,6 +336,7 @@ class _ChatInputState extends State<ChatInput> {
         webSearchEnabled: _webSearchEnabled,
         imageGenerationMode: _imageGenerationMode,
         diagramGenerationMode: _diagramGenerationMode,
+        presentationGenerationMode: _presentationGenerationMode,
         onImageUpload: () async {
           Navigator.pop(context);
           await _handleImageUpload();
@@ -327,6 +347,7 @@ class _ChatInputState extends State<ChatInput> {
             if (enabled) {
               _imageGenerationMode = false;
               _diagramGenerationMode = false;
+              _presentationGenerationMode = false;
             }
           });
           Navigator.pop(context);
@@ -337,6 +358,7 @@ class _ChatInputState extends State<ChatInput> {
             if (enabled) {
               _webSearchEnabled = false;
               _diagramGenerationMode = false;
+              _presentationGenerationMode = false;
             }
           });
           Navigator.pop(context);
@@ -351,6 +373,18 @@ class _ChatInputState extends State<ChatInput> {
             if (enabled) {
               _imageGenerationMode = false;
               _webSearchEnabled = false;
+              _presentationGenerationMode = false;
+            }
+          });
+          Navigator.pop(context);
+        },
+        onPresentationToggle: (enabled) {
+          setState(() {
+            _presentationGenerationMode = enabled;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _webSearchEnabled = false;
+              _diagramGenerationMode = false;
             }
           });
           Navigator.pop(context);
@@ -416,20 +450,24 @@ class _ExtensionsBottomSheet extends StatelessWidget {
   final bool webSearchEnabled;
   final bool imageGenerationMode;
   final bool diagramGenerationMode;
+  final bool presentationGenerationMode;
   final VoidCallback onImageUpload;
   final Function(bool) onWebSearchToggle;
   final Function(bool) onImageModeToggle;
   final Function(bool) onDiagramToggle;
+  final Function(bool) onPresentationToggle;
   final VoidCallback onEnhancePrompt;
 
   const _ExtensionsBottomSheet({
     required this.webSearchEnabled,
     required this.imageGenerationMode,
     this.diagramGenerationMode = false,
+    this.presentationGenerationMode = false,
     required this.onImageUpload,
     required this.onWebSearchToggle,
     required this.onImageModeToggle,
     required this.onDiagramToggle,
+    required this.onPresentationToggle,
     required this.onEnhancePrompt,
   });
 
@@ -521,6 +559,18 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                   isToggled: diagramGenerationMode,
                   iconSize: 20,
                   onTap: () => onDiagramToggle(!diagramGenerationMode),
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Presentation Generation
+                _ExtensionTile(
+                  icon: Icons.slideshow_outlined,
+                  title: 'Presentation Generation',
+                  subtitle: 'Create professional presentations with slides',
+                  isToggled: presentationGenerationMode,
+                  iconSize: 20,
+                  onTap: () => onPresentationToggle(!presentationGenerationMode),
                 ),
               ],
             ),

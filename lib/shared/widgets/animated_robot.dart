@@ -250,24 +250,57 @@ class RobotPainter extends CustomPainter {
       sparklePaint,
     );
     
-    // Mouth (curved line)
+    // Nose
+    final nosePaint = Paint()
+      ..color = primaryColor.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+    
+    final noseY = center.dy + headRadius * 0.05;
+    final nosePath = Path();
+    nosePath.moveTo(center.dx, noseY - headRadius * 0.08);
+    nosePath.lineTo(center.dx - headRadius * 0.08, noseY + headRadius * 0.05);
+    nosePath.quadraticBezierTo(
+      center.dx,
+      noseY + headRadius * 0.08,
+      center.dx + headRadius * 0.08,
+      noseY + headRadius * 0.05,
+    );
+    nosePath.close();
+    
+    canvas.drawPath(nosePath, nosePaint);
+    
+    // Mouth (curved line with fill)
     final mouthPaint = Paint()
       ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+    
+    final mouthStrokePaint = Paint()
+      ..color = primaryColor.withOpacity(0.4)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
+      ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
     
+    final mouthY = center.dy + headRadius * 0.35;
     final mouthPath = Path();
-    final mouthY = center.dy + headRadius * 0.3;
     mouthPath.moveTo(center.dx - headRadius * 0.3, mouthY);
     mouthPath.quadraticBezierTo(
       center.dx,
-      mouthY + headRadius * 0.15,
+      mouthY + headRadius * 0.2,
       center.dx + headRadius * 0.3,
       mouthY,
     );
+    mouthPath.quadraticBezierTo(
+      center.dx,
+      mouthY + headRadius * 0.1,
+      center.dx - headRadius * 0.3,
+      mouthY,
+    );
+    mouthPath.close();
     
+    // Draw mouth fill
     canvas.drawPath(mouthPath, mouthPaint);
+    // Draw mouth outline
+    canvas.drawPath(mouthPath, mouthStrokePaint);
     
     // Body indicator dots
     final dotPaint = Paint()
