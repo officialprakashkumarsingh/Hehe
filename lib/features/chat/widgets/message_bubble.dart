@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import '../../../core/models/message_model.dart';
 import '../../../core/models/image_message_model.dart';
 import '../../../core/models/vision_message_model.dart';
+import '../../../core/models/diagram_message_model.dart';
 import '../../../shared/widgets/markdown_message.dart';
 import '../../../shared/widgets/thinking_animation.dart';
+import '../../../shared/widgets/diagram_preview.dart';
 
 class MessageBubble extends StatefulWidget {
   final Message message;
@@ -115,6 +117,8 @@ class _MessageBubbleState extends State<MessageBubble>
                   _buildImageContent(widget.message as ImageMessage),
                 ] else if (widget.message is VisionMessage) ...[
                   _buildVisionContent(widget.message as VisionMessage),
+                ] else if (widget.message is DiagramMessage) ...[
+                  _buildDiagramContent(widget.message as DiagramMessage),
                 ] else ...[
                   // Regular message content with markdown support
                   MarkdownMessage(
@@ -142,8 +146,8 @@ class _MessageBubbleState extends State<MessageBubble>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // For image messages, only show export
-                  if (widget.message is ImageMessage) ...[
+                  // For image and diagram messages, only show export
+                  if (widget.message is ImageMessage || widget.message is DiagramMessage) ...[
                     if (widget.onExport != null)
                       _ActionButton(
                         icon: Icons.download_outlined,
@@ -395,6 +399,45 @@ class _MessageBubbleState extends State<MessageBubble>
             isStreaming: false,
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _buildDiagramContent(DiagramMessage diagramMessage) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Show the prompt
+        if (diagramMessage.prompt.isNotEmpty) ...[
+          Text(
+            'Diagram: ${diagramMessage.prompt}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        
+        // Show the diagram preview
+        if (diagramMessage.mermaidCode.isNotEmpty)
+          DiagramPreview(
+            mermaidCode: diagramMessage.mermaidCode,
+            onExport: widget.onExport,
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Failed to generate diagram. Please try again.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
       ],
     );
   }

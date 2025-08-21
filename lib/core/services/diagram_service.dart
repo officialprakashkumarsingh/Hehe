@@ -177,7 +177,7 @@ class DiagramService extends ChangeNotifier {
     // Ensure it starts with a valid diagram type
     if (!_isValidMermaidCode(cleaned)) {
       // Try to fix common issues
-      cleaned = _fixCommonIssues(cleaned);
+      cleaned = fixCommonIssues(cleaned);
     }
     
     return cleaned;
@@ -197,7 +197,7 @@ class DiagramService extends ChangeNotifier {
   }
 
   // Fix common Mermaid code issues
-  static String _fixCommonIssues(String code) {
+  static String fixCommonIssues(String code) {
     String fixed = code.trim();
     
     // Remove any markdown code block markers if present

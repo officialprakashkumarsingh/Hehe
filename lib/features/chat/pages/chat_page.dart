@@ -12,6 +12,9 @@ import '../../../core/services/export_service.dart';
 import '../../../core/services/vision_service.dart';
 import '../../../core/models/image_message_model.dart';
 import '../../../core/models/vision_message_model.dart';
+import '../../../core/models/diagram_message_model.dart';
+import '../../../core/services/diagram_service.dart';
+import '../../../shared/widgets/animated_robot.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/template_selector.dart';
@@ -104,6 +107,7 @@ class _ChatPageState extends State<ChatPage> {
               selectedModel: modelService.selectedModel,
               onSendMessage: _handleSendMessage,
               onGenerateImage: _handleImageGeneration,
+              onGenerateDiagram: _handleDiagramGeneration,
               onVisionAnalysis: _handleVisionAnalysis,
               onStopStreaming: _stopStreaming,
               onTemplateRequest: () {
@@ -159,15 +163,14 @@ class _ChatPageState extends State<ChatPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 100,
+            height: 100,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(
-              Icons.chat_bubble_outline,
-              size: 40,
+            child: AnimatedRobot(
+              size: 80,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
@@ -761,6 +764,80 @@ Based on the above current information and search results, please provide a comp
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _handleDiagramGeneration(String prompt) async {
+    if (prompt.trim().isEmpty) return;
+    
+    final userMessage = Message.user('Create a diagram: $prompt');
+    setState(() {
+      _messages.add(userMessage);
+      _isLoading = true;
+      // Reset auto-scroll for new message
+      _autoScrollEnabled = true;
+      _userIsScrolling = false;
+    });
+    
+    _scrollToBottom();
+    
+    try {
+      // Generate diagram using AI
+      final diagramPrompt = '''Create a Mermaid diagram for: $prompt
+      
+Requirements:
+1. Generate ONLY valid Mermaid code
+2. Start directly with the diagram type (graph, flowchart, sequenceDiagram, etc.)
+3. Do NOT include markdown code blocks or any explanations
+4. Make it clear and well-structured
+5. Use appropriate labels and connections
+
+Example formats:
+- Flowchart: graph TD or flowchart TD
+- Sequence: sequenceDiagram
+- Gantt: gantt
+- Pie: pie title
+- Class: classDiagram
+
+Generate the Mermaid code now:''';
+      
+      final stream = await ApiService.sendMessage(
+        message: diagramPrompt,
+        model: ModelService.instance.selectedModel,
+      );
+      
+      String mermaidCode = '';
+      await for (final chunk in stream) {
+        mermaidCode += chunk;
+      }
+      
+      // Extract and clean the Mermaid code
+      mermaidCode = DiagramService.extractMermaidCode(mermaidCode);
+      
+      // Fix common issues
+      if (mermaidCode.isNotEmpty) {
+        mermaidCode = DiagramService.fixCommonIssues(mermaidCode);
+      }
+      
+      // Add diagram message
+      final diagramMessage = DiagramMessage.assistant(
+        prompt: prompt,
+        mermaidCode: mermaidCode,
+      );
+      
+      setState(() {
+        _messages.add(diagramMessage);
+        _isLoading = false;
+      });
+      
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _messages.add(Message.error(
+          'Sorry, I encountered an error generating the diagram. Please try again.',
+        ));
+        _isLoading = false;
+      });
     }
   }
 
