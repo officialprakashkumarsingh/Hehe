@@ -141,16 +141,11 @@ class DiagramService extends ChangeNotifier {
         return '';
       }
 
-      // Try multiple services for better reliability
-      if (useFallback) {
-        // For export: Use PNG with better compatibility
-        final encodedCode = Uri.encodeComponent(cleanCode);
-        return 'https://mermaid.ink/img/$encodedCode?type=png&theme=default&width=2048&height=1536';
-      } else {
-        // For preview: Use standard quality
-        final encodedCode = base64.encode(utf8.encode(cleanCode));
-        return 'https://mermaid.ink/img/$encodedCode?type=png';
-      }
+      // Use base64 encoding for both to avoid URL length issues
+      final encodedCode = base64.encode(utf8.encode(cleanCode));
+      
+      // Always use the same reliable format
+      return 'https://mermaid.ink/img/$encodedCode?type=png';
     } catch (e) {
       print('Error generating diagram URL: $e');
       return '';

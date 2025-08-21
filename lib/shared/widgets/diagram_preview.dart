@@ -103,16 +103,20 @@ class _DiagramPreviewState extends State<DiagramPreview> {
         ),
       );
       
-      // Generate URL for export - using SVG for better quality
-      final exportUrl = DiagramService.generateDiagramUrl(
-        widget.mermaidCode, 
-        useFallback: true, // Use SVG for better quality
-        highQuality: false, // Avoid potential URL length issues
-      );
+      // Use the current diagram URL that's already loaded
+      final exportUrl = _diagramUrl;
       
-      // Download the image with timeout and error handling
+      if (exportUrl.isEmpty) {
+        throw Exception('No diagram to export');
+      }
+      
+      // Download the image with proper headers
       final response = await http.get(
         Uri.parse(exportUrl),
+        headers: {
+          'Accept': 'image/png,image/svg+xml,image/*',
+          'User-Agent': 'AhamAI/1.0',
+        },
       ).timeout(
         const Duration(seconds: 30),
         onTimeout: () {

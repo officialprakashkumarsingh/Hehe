@@ -44,6 +44,31 @@ class _PresentationPreviewState extends State<PresentationPreview> {
         ),
       );
       
+      // Get theme colors
+      final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+      final primaryColor = Theme.of(context).colorScheme.primary;
+      final surfaceColor = Theme.of(context).colorScheme.surface;
+      final onSurfaceColor = Theme.of(context).colorScheme.onSurface;
+      
+      // Convert Flutter colors to PDF colors
+      final pdfPrimaryColor = PdfColor(
+        primaryColor.red / 255,
+        primaryColor.green / 255,
+        primaryColor.blue / 255,
+      );
+      
+      final pdfBackgroundColor = isDarkMode 
+          ? PdfColors.grey900 
+          : PdfColors.white;
+      
+      final pdfTextColor = isDarkMode 
+          ? PdfColors.grey100 
+          : PdfColors.grey900;
+      
+      final pdfSecondaryTextColor = isDarkMode 
+          ? PdfColors.grey300 
+          : PdfColors.grey700;
+      
       final pdf = pw.Document(
         theme: pw.ThemeData.withFont(
           base: await PdfGoogleFonts.notoSansRegular(),
