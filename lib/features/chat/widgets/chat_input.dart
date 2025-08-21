@@ -275,20 +275,8 @@ class _ChatInputState extends State<ChatInput> {
                         height: 48,
                         child: Center(
                           child: Icon(
-                            widget.isLoading
-                                ? Icons.stop_rounded
-                                : (_imageGenerationMode ? Icons.auto_awesome_outlined 
-                                    : (_diagramGenerationMode ? Icons.account_tree_outlined
-                                        : (_presentationGenerationMode ? Icons.slideshow_outlined
-                                            : (_chartGenerationMode ? Icons.bar_chart_outlined
-                                                : (_flashcardGenerationMode ? Icons.style_outlined
-                                                    : (_quizGenerationMode ? Icons.quiz_outlined
-                                                        : Icons.arrow_upward_rounded))))))),
-                            color: widget.isLoading
-                                ? Colors.white
-                                : (_canSend
-                                    ? Theme.of(context).colorScheme.onPrimary
-                                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                            _getButtonIcon(),
+                            color: _getButtonIconColor(context),
                             size: 20,
                           ),
                         ),
@@ -558,6 +546,41 @@ class _ChatInputState extends State<ChatInput> {
         ),
       );
     }
+  }
+
+  IconData _getButtonIcon() {
+    if (widget.isLoading) {
+      return Icons.stop_rounded;
+    }
+    if (_imageGenerationMode) {
+      return Icons.auto_awesome_outlined;
+    }
+    if (_diagramGenerationMode) {
+      return Icons.account_tree_outlined;
+    }
+    if (_presentationGenerationMode) {
+      return Icons.slideshow_outlined;
+    }
+    if (_chartGenerationMode) {
+      return Icons.bar_chart_outlined;
+    }
+    if (_flashcardGenerationMode) {
+      return Icons.style_outlined;
+    }
+    if (_quizGenerationMode) {
+      return Icons.quiz_outlined;
+    }
+    return Icons.arrow_upward_rounded;
+  }
+
+  Color _getButtonIconColor(BuildContext context) {
+    if (widget.isLoading) {
+      return Colors.white;
+    }
+    if (_canSend) {
+      return Theme.of(context).colorScheme.onPrimary;
+    }
+    return Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
   }
 }
 
