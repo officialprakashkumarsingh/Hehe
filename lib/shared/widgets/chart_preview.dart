@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/services/chart_service.dart';
@@ -22,11 +22,51 @@ class ChartPreview extends StatefulWidget {
 }
 
 class _ChartPreviewState extends State<ChartPreview> {
-  InAppWebViewController? _webViewController;
+  late final WebViewController _controller;
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
   bool _isExporting = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _initializeWebView();
+  }
+  
+  void _initializeWebView() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final htmlContent = ChartService.generateChartHtml(
+      widget.chartConfig,
+      isDarkMode,
+    );
+    
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.transparent)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (String url) {
+            setState(() {
+              _isLoading = true;
+            });
+          },
+          onPageFinished: (String url) {
+            setState(() {
+              _isLoading = false;
+            });
+          },
+          onWebResourceError: (WebResourceError error) {
+            setState(() {
+              _isLoading = false;
+              _hasError = true;
+              _errorMessage = error.description ?? 'Unknown error';
+            });
+          },
+        ),
+      )
+      ..loadHtmlString(htmlContent);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,81 +93,7 @@ class _ChartPreviewState extends State<ChartPreview> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               child: Stack(
                 children: [
-                  InAppWebView(
-                    initialData: InAppWebViewInitialData(
-                      data: ChartService.generateChartHtml(
-                        widget.chartConfig,
-                        isDarkMode,
-                      ),
-                      mimeType: 'text/html',
-                      encoding: 'utf-8',
-                    ),
-                    initialOptions: InAppWebViewGroupOptions(
-                      crossPlatform: InAppWebViewOptions(
-                        transparentBackground: true,
-                        supportZoom: false,
-                        disableHorizontalScroll: true,
-                        disableVerticalScroll: false,
-                        useShouldOverrideUrlLoading: true,
-                      ),
-                      android: AndroidInAppWebViewOptions(
-                        useHybridComposition: true,
-                        forceDark: isDarkMode 
-                            ? AndroidForceDark.FORCE_DARK_ON 
-                            : AndroidForceDark.FORCE_DARK_OFF,
-                      ),
-                      ios: IOSInAppWebViewOptions(
-                        allowsInlineMediaPlayback: true,
-                      ),
-                    ),
-                    onWebViewCreated: (controller) {
-                      _webViewController = controller;
-                      
-                      // Add JavaScript handlers
-                      controller.addJavaScriptHandler(
-                        handlerName: 'chartReady',
-                        callback: (args) {
-                          if (mounted) {
-                            setState(() {
-                              _isLoading = false;
-                              _hasError = false;
-                            });
-                          }
-                        },
-                      );
-                      
-                      controller.addJavaScriptHandler(
-                        handlerName: 'chartError',
-                        callback: (args) {
-                          if (mounted) {
-                            setState(() {
-                              _isLoading = false;
-                              _hasError = true;
-                              _errorMessage = args.isNotEmpty ? args[0].toString() : 'Unknown error';
-                            });
-                          }
-                        },
-                      );
-                    },
-                    onLoadStop: (controller, url) async {
-                      // Give it a moment to render
-                      await Future.delayed(const Duration(milliseconds: 500));
-                      if (mounted && _isLoading) {
-                        setState(() {
-                          _isLoading = false;
-                        });
-                      }
-                    },
-                    onLoadError: (controller, url, code, message) {
-                      if (mounted) {
-                        setState(() {
-                          _isLoading = false;
-                          _hasError = true;
-                          _errorMessage = message;
-                        });
-                      }
-                    },
-                  ),
+                  WebViewWidget(controller: _controller),
                   
                   // Loading indicator
                   if (_isLoading)
@@ -215,8 +181,6 @@ class _ChartPreviewState extends State<ChartPreview> {
   }
 
   Future<void> _exportAsImage() async {
-    if (_webViewController == null) return;
-    
     setState(() {
       _isExporting = true;
     });
@@ -226,21 +190,34 @@ class _ChartPreviewState extends State<ChartPreview> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Exporting chart...'),
+            content: Text('Exporting chart as image...'),
             duration: Duration(seconds: 2),
           ),
         );
       }
       
-      // Take screenshot of the WebView
-      final Uint8List? screenshot = await _webViewController!.takeScreenshot();
+      // For webview_flutter, we need to use a different approach
+      // We'll generate a data URL from the chart and share that
+      final String? dataUrl = await _controller.runJavaScriptReturningResult('''
+        (function() {
+          var canvas = document.getElementById('myChart');
+          if (canvas) {
+            return canvas.toDataURL('image/png');
+          }
+          return null;
+        })();
+      ''') as String?;
       
-      if (screenshot != null) {
+      if (dataUrl != null && dataUrl.contains('data:image/png;base64,')) {
+        // Extract base64 data
+        final base64Data = dataUrl.replaceFirst('data:image/png;base64,', '').replaceAll('"', '');
+        final Uint8List bytes = base64Decode(base64Data);
+        
         // Save to temporary file
         final tempDir = await getTemporaryDirectory();
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final file = File('${tempDir.path}/chart_$timestamp.png');
-        await file.writeAsBytes(screenshot);
+        await file.writeAsBytes(bytes);
         
         // Share the image
         await Share.shareXFiles(

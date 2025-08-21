@@ -43,10 +43,14 @@ class ChartMessage extends Message {
     );
   }
 
-  @override
   Map<String, dynamic> toJson() {
     return {
-      ...super.toJson(),
+      'id': id,
+      'content': content,
+      'type': type.toString(),
+      'timestamp': timestamp.toIso8601String(),
+      'isStreaming': isStreaming,
+      'hasError': hasError,
       'prompt': prompt,
       'chartConfig': chartConfig,
       'chartType': chartType,

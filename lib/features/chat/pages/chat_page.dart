@@ -1146,10 +1146,19 @@ Format the response as:
     });
     
     try {
-      await _chatService.streamMessage(
-        chartPrompt,
-        _selectedModel,
-        onData: (chunk) {
+      // Get the selected model
+      final selectedModel = ModelService.instance.selectedModel;
+      
+      // Stream the response
+      final stream = await ApiService.sendMessage(
+        message: chartPrompt,
+        model: selectedModel,
+        conversationHistory: [],
+        systemPrompt: MessageModeService.instance.effectiveSystemPrompt,
+      );
+      
+      stream.listen(
+        (chunk) {
           fullResponse += chunk;
           
           // Try to extract chart config as we stream
@@ -1185,8 +1194,6 @@ Format the response as:
                 );
               }
             });
-            
-            _saveCurrentChat();
           }
         },
         onError: (error) {
