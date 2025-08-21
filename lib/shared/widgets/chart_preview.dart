@@ -185,12 +185,14 @@ class _ChartPreviewState extends State<ChartPreview> {
     });
     
     try {
-      // Show export notification
+      // Show export notification with proper positioning
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Exporting chart as image...'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('Exporting chart as image...'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
           ),
         );
       }
@@ -231,9 +233,12 @@ class _ChartPreviewState extends State<ChartPreview> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Chart exported successfully!'),
+            SnackBar(
+              content: const Text('Chart exported successfully!'),
               backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
             ),
           );
         }
@@ -246,6 +251,9 @@ class _ChartPreviewState extends State<ChartPreview> {
           SnackBar(
             content: Text('Failed to export chart: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
           ),
         );
       }
