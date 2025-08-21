@@ -61,26 +61,44 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
         title: Center(
           child: GestureDetector(
             onTap: () => _showModelSelector(),
-            child: RichText(
-              text: TextSpan(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.transparent,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextSpan(
-                    text: 'अहम्',
-                    style: GoogleFonts.notoSansDevanagari(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0,
-                      color: Theme.of(context).colorScheme.onSurface,
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'अहम्',
+                          style: GoogleFonts.notoSansDevanagari(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'AI',
+                          style: GoogleFonts.inter(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  TextSpan(
-                    text: 'AI',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                   ),
                 ],
               ),
