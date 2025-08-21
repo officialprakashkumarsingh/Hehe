@@ -199,6 +199,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                     ),
                   ],
                 ),
+                ),
               );
             },
           ),
