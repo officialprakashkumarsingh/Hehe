@@ -540,34 +540,6 @@ class _ExtensionsBottomSheet extends StatelessWidget {
             ),
           ),
           
-          // Title
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.extension_outlined,
-                  size: 24,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Extensions',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Divider
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-          ),
-          
           // Options in grid layout
           Padding(
             padding: const EdgeInsets.all(20),
