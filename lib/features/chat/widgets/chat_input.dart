@@ -270,25 +270,27 @@ class _ChatInputState extends State<ChatInput> {
                     child: InkWell(
                       onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : (_diagramGenerationMode ? _handleDiagramGenerationDirect : (_presentationGenerationMode ? _handlePresentationGenerationDirect : (_chartGenerationMode ? _handleChartGenerationDirect : (_flashcardGenerationMode ? _handleFlashcardGenerationDirect : (_quizGenerationMode ? _handleQuizGenerationDirect : _handleSend)))))) : null),
                       borderRadius: BorderRadius.circular(24),
-                      child: Container(
+                      child: SizedBox(
                         width: 48,
                         height: 48,
-                        child: Icon(
-                          widget.isLoading
-                              ? Icons.stop_rounded
-                              : (_imageGenerationMode ? Icons.auto_awesome_outlined 
-                                  : (_diagramGenerationMode ? Icons.account_tree_outlined
-                                      : (_presentationGenerationMode ? Icons.slideshow_outlined
-                                          : (_chartGenerationMode ? Icons.bar_chart_outlined
-                                              : (_flashcardGenerationMode ? Icons.style_outlined
-                                                  : (_quizGenerationMode ? Icons.quiz_outlined
-                                                      : Icons.arrow_upward_rounded))))))),
-                          color: widget.isLoading
-                              ? Colors.white
-                              : (_canSend
-                                  ? Theme.of(context).colorScheme.onPrimary
-                                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
-                          size: 20,
+                        child: Center(
+                          child: Icon(
+                            widget.isLoading
+                                ? Icons.stop_rounded
+                                : (_imageGenerationMode ? Icons.auto_awesome_outlined 
+                                    : (_diagramGenerationMode ? Icons.account_tree_outlined
+                                        : (_presentationGenerationMode ? Icons.slideshow_outlined
+                                            : (_chartGenerationMode ? Icons.bar_chart_outlined
+                                                : (_flashcardGenerationMode ? Icons.style_outlined
+                                                    : (_quizGenerationMode ? Icons.quiz_outlined
+                                                        : Icons.arrow_upward_rounded))))))),
+                            color: widget.isLoading
+                                ? Colors.white
+                                : (_canSend
+                                    ? Theme.of(context).colorScheme.onPrimary
+                                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -297,8 +299,8 @@ class _ChatInputState extends State<ChatInput> {
               ],
             ),
           ),
-                  ),
-      ],
+        ],
+      ),
     );
   }
 
