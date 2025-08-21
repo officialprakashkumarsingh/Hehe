@@ -500,76 +500,133 @@ class _ExtensionsBottomSheet extends StatelessWidget {
             ),
           ),
           
-          // Options
+          // Title
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-            child: Column(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
               children: [
-                // Image Upload & Analysis
-                _ExtensionTile(
-                  icon: Icons.photo_camera_outlined,
-                  title: 'Analyse Image',
-                  subtitle: '',
-                  iconSize: 24,
-                  onTap: onImageUpload,
+                Icon(
+                  Icons.extension_outlined,
+                  size: 24,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
-                
+                const SizedBox(width: 12),
+                Text(
+                  'Extensions',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Divider
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          ),
+          
+          // Options organized by category
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Input Enhancement Section
+                Text(
+                  'INPUT ENHANCEMENT',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 
-                // Enhance Prompt
-                _ExtensionTile(
-                  icon: Icons.auto_fix_high,
-                  title: 'Enhance Prompt',
-                  subtitle: 'Improve your prompt with AI for better results',
-                  iconSize: 20,
-                  onTap: onEnhancePrompt,
+                Row(
+                  children: [
+                    Expanded(
+                      child: _CompactExtensionTile(
+                        icon: Icons.photo_camera_outlined,
+                        title: 'Analyse Image',
+                        onTap: onImageUpload,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _CompactExtensionTile(
+                        icon: Icons.auto_fix_high,
+                        title: 'Enhance Prompt',
+                        onTap: onEnhancePrompt,
+                      ),
+                    ),
+                  ],
                 ),
                 
+                const SizedBox(height: 20),
+                
+                // Generation Modes Section
+                Text(
+                  'GENERATION MODES',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 
                 // Web Search
                 _ExtensionTile(
                   icon: Icons.search_outlined,
                   title: 'Web Search',
-                  subtitle: 'Include real-time web search in responses',
+                  subtitle: 'Real-time web search',
                   isToggled: webSearchEnabled,
                   iconSize: 20,
+                  compact: true,
                   onTap: () => onWebSearchToggle(!webSearchEnabled),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 
                 // Image Generation
                 _ExtensionTile(
                   icon: Icons.auto_awesome_outlined,
                   title: 'Image Generation',
-                  subtitle: 'Generate images from text descriptions',
+                  subtitle: 'Generate images from text',
                   isToggled: imageGenerationMode,
                   iconSize: 20,
+                  compact: true,
                   onTap: () => onImageModeToggle(!imageGenerationMode),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 
                 // Diagram Generation
                 _ExtensionTile(
                   icon: Icons.account_tree_outlined,
                   title: 'Diagram Generation',
-                  subtitle: 'Create flowcharts, sequence diagrams, and more',
+                  subtitle: 'Flowcharts & diagrams',
                   isToggled: diagramGenerationMode,
                   iconSize: 20,
+                  compact: true,
                   onTap: () => onDiagramToggle(!diagramGenerationMode),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 
                 // Presentation Generation
                 _ExtensionTile(
                   icon: Icons.slideshow_outlined,
                   title: 'Presentation Generation',
-                  subtitle: 'Create professional presentations with slides',
+                  subtitle: 'Professional slides',
                   isToggled: presentationGenerationMode,
                   iconSize: 20,
+                  compact: true,
                   onTap: () => onPresentationToggle(!presentationGenerationMode),
                 ),
               ],
@@ -587,6 +644,7 @@ class _ExtensionTile extends StatelessWidget {
   final String subtitle;
   final bool isToggled;
   final double iconSize;
+  final bool compact;
   final VoidCallback onTap;
 
   const _ExtensionTile({
@@ -595,6 +653,7 @@ class _ExtensionTile extends StatelessWidget {
     required this.subtitle,
     this.isToggled = false,
     this.iconSize = 20,
+    this.compact = false,
     required this.onTap,
   });
 
@@ -612,7 +671,7 @@ class _ExtensionTile extends StatelessWidget {
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(compact ? 12 : 16),
           child: Row(
             children: [
               Container(

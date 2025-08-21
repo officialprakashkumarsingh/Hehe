@@ -73,11 +73,17 @@ class _PresentationPreviewState extends State<PresentationPreview> {
           ? PdfColors.grey800
           : PdfColors.grey100;
       
+      // Load fonts with better emoji support
+      final baseFont = await PdfGoogleFonts.notoSansRegular();
+      final boldFont = await PdfGoogleFonts.notoSansBold();
+      final emojiFont = await PdfGoogleFonts.notoEmoji();
+      
       final pdf = pw.Document(
         theme: pw.ThemeData.withFont(
-          base: await PdfGoogleFonts.notoSansRegular(),
-          bold: await PdfGoogleFonts.notoSansBold(),
-          icons: await PdfGoogleFonts.notoColorEmoji(),
+          base: baseFont,
+          bold: boldFont,
+          icons: emojiFont,
+          fontFallback: [emojiFont], // Add emoji as fallback font
         ),
       );
       
@@ -87,6 +93,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
         pdf.addPage(
           pw.Page(
             pageFormat: PdfPageFormat.a4.landscape,
+            margin: pw.EdgeInsets.zero, // Remove white margins
             build: (context) {
               return pw.Container(
                 color: pdfBackgroundColor,
@@ -117,6 +124,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                               textColor: pdfTextColor,
                               primaryColor: pdfPrimaryColor,
                               secondaryColor: pdfSecondaryTextColor,
+                              isDarkMode: isDarkMode,
                             ),
                           
                           if (slide.bulletPoints != null) ...[
@@ -255,6 +263,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
     PdfColor? textColor,
     PdfColor? primaryColor,
     PdfColor? secondaryColor,
+    bool isDarkMode = false,
     double fontSize = 16,
     bool isInline = false,
   }) {
@@ -330,8 +339,40 @@ class _PresentationPreviewState extends State<PresentationPreview> {
             ),
           ),
         ));
-      } else if (line.startsWith('```') || line.endsWith('```')) {
-        // Code block - skip the backticks
+      } else if (line.startsWith('```')) {
+        // Code block start - collect until end
+        final codeLines = <String>[];
+        int i = lines.indexOf(line) + 1;
+        while (i < lines.length && !lines[i].startsWith('```')) {
+          codeLines.add(lines[i]);
+          i++;
+        }
+        if (codeLines.isNotEmpty) {
+          widgets.add(pw.Container(
+            padding: const pw.EdgeInsets.all(10),
+            decoration: pw.BoxDecoration(
+              color: isDarkMode ? PdfColors.grey800 : PdfColors.grey200,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+              border: pw.Border.all(
+                color: isDarkMode ? PdfColors.grey700 : PdfColors.grey400,
+                width: 1,
+              ),
+            ),
+            child: pw.Text(
+              codeLines.join('\n'),
+              style: pw.TextStyle(
+                fontSize: fontSize - 2,
+                fontWeight: pw.FontWeight.normal,
+                color: textColor,
+              ),
+            ),
+          ));
+          // Skip processed lines
+          final skipCount = codeLines.length + 1; // +1 for closing ```
+          for (int j = 0; j < skipCount && lines.indexOf(line) + 1 < lines.length; j++) {
+            lines.removeAt(lines.indexOf(line) + 1);
+          }
+        }
         continue;
       } else if (line.contains('**') && line.indexOf('**') != line.lastIndexOf('**')) {
         // Bold text - simple approach
