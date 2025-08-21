@@ -13,8 +13,10 @@ import '../../../core/services/vision_service.dart';
 import '../../../core/models/image_message_model.dart';
 import '../../../core/models/vision_message_model.dart';
 import '../../../core/models/diagram_message_model.dart';
+import '../../../core/models/presentation_message_model.dart';
 import '../../../core/services/diagram_service.dart';
 import '../../../shared/widgets/animated_robot.dart';
+import '../../../shared/widgets/presentation_preview.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/template_selector.dart';
@@ -108,6 +110,7 @@ class _ChatPageState extends State<ChatPage> {
               onSendMessage: _handleSendMessage,
               onGenerateImage: _handleImageGeneration,
               onGenerateDiagram: _handleDiagramGeneration,
+              onGeneratePresentation: _handlePresentationGeneration,
               onVisionAnalysis: _handleVisionAnalysis,
               onStopStreaming: _stopStreaming,
               onTemplateRequest: () {
@@ -887,6 +890,148 @@ Generate the Mermaid code now:''';
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _handlePresentationGeneration(String prompt) async {
+    if (prompt.trim().isEmpty) return;
+
+    final userMessage = Message.user('Create a presentation: $prompt');
+    setState(() {
+      _messages.add(userMessage);
+      _isLoading = true;
+      _autoScrollEnabled = true;
+      _userIsScrolling = false;
+    });
+
+    _scrollToBottom();
+
+    try {
+      final presentationPrompt = '''Create a professional presentation about: $prompt
+
+Requirements:
+1. Generate a structured presentation with 5-10 slides
+2. Each slide should have a clear title and content
+3. Use bullet points where appropriate
+4. Include speaker notes if helpful
+5. Make it engaging and informative
+
+Format the response as follows:
+---SLIDE 1---
+Title: [Slide Title]
+Content: [Main content]
+Bullets:
+- Point 1
+- Point 2
+Notes: [Speaker notes]
+
+---SLIDE 2---
+[Continue same format]
+
+Generate the presentation now:''';
+
+      final stream = await ApiService.sendMessage(
+        message: presentationPrompt,
+        model: ModelService.instance.selectedModel,
+      );
+
+      String fullResponse = '';
+      await for (final chunk in stream) {
+        fullResponse += chunk;
+      }
+
+      // Parse the response into slides
+      final slides = _parsePresentation(fullResponse);
+      
+      final presentationMessage = PresentationMessage.assistant(
+        prompt: prompt,
+        slides: slides,
+      );
+
+      setState(() {
+        _messages.add(presentationMessage);
+        _isLoading = false;
+      });
+
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _messages.add(Message.error(
+          'Sorry, I encountered an error generating the presentation. Please try again.',
+        ));
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<PresentationSlide> _parsePresentation(String response) {
+    final slides = <PresentationSlide>[];
+    final slideRegex = RegExp(r'---SLIDE\s*\d+---', multiLine: true);
+    final slideSections = response.split(slideRegex);
+    
+    for (final section in slideSections) {
+      if (section.trim().isEmpty) continue;
+      
+      String title = '';
+      String content = '';
+      List<String> bullets = [];
+      String notes = '';
+      
+      // Extract title
+      final titleMatch = RegExp(r'Title:\s*(.+)').firstMatch(section);
+      if (titleMatch != null) {
+        title = titleMatch.group(1)?.trim() ?? '';
+      }
+      
+      // Extract content
+      final contentMatch = RegExp(r'Content:\s*(.+?)(?=Bullets:|Notes:|$)', dotAll: true).firstMatch(section);
+      if (contentMatch != null) {
+        content = contentMatch.group(1)?.trim() ?? '';
+      }
+      
+      // Extract bullets
+      final bulletsMatch = RegExp(r'Bullets:\s*(.+?)(?=Notes:|$)', dotAll: true).firstMatch(section);
+      if (bulletsMatch != null) {
+        final bulletsText = bulletsMatch.group(1) ?? '';
+        bullets = bulletsText
+            .split('\n')
+            .where((line) => line.trim().startsWith('-') || line.trim().startsWith('•'))
+            .map((line) => line.replaceFirst(RegExp(r'^[-•]\s*'), '').trim())
+            .where((line) => line.isNotEmpty)
+            .toList();
+      }
+      
+      // Extract notes
+      final notesMatch = RegExp(r'Notes:\s*(.+)', dotAll: true).firstMatch(section);
+      if (notesMatch != null) {
+        notes = notesMatch.group(1)?.trim() ?? '';
+      }
+      
+      if (title.isNotEmpty || content.isNotEmpty) {
+        slides.add(PresentationSlide(
+          title: title.isNotEmpty ? title : 'Slide ${slides.length + 1}',
+          content: content,
+          bulletPoints: bullets.isNotEmpty ? bullets : null,
+          notes: notes.isNotEmpty ? notes : null,
+        ));
+      }
+    }
+    
+    // If no slides were parsed, try alternative format
+    if (slides.isEmpty) {
+      // Try to create slides from paragraphs
+      final paragraphs = response.split('\n\n');
+      for (int i = 0; i < paragraphs.length && i < 10; i++) {
+        final para = paragraphs[i].trim();
+        if (para.isNotEmpty) {
+          slides.add(PresentationSlide(
+            title: 'Slide ${i + 1}',
+            content: para,
+          ));
+        }
+      }
+    }
+    
+    return slides;
   }
 
   Future<void> _handleImageModelResponse(

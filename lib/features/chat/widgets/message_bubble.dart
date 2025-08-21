@@ -6,9 +6,11 @@ import '../../../core/models/message_model.dart';
 import '../../../core/models/image_message_model.dart';
 import '../../../core/models/vision_message_model.dart';
 import '../../../core/models/diagram_message_model.dart';
+import '../../../core/models/presentation_message_model.dart';
 import '../../../shared/widgets/markdown_message.dart';
 import '../../../shared/widgets/thinking_animation.dart';
 import '../../../shared/widgets/diagram_preview.dart';
+import '../../../shared/widgets/presentation_preview.dart';
 
 class MessageBubble extends StatefulWidget {
   final Message message;
@@ -119,6 +121,8 @@ class _MessageBubbleState extends State<MessageBubble>
                   _buildVisionContent(widget.message as VisionMessage),
                 ] else if (widget.message is DiagramMessage) ...[
                   _buildDiagramContent(widget.message as DiagramMessage),
+                ] else if (widget.message is PresentationMessage) ...[
+                  _buildPresentationContent(widget.message as PresentationMessage),
                 ] else ...[
                   // Regular message content with markdown support
                   MarkdownMessage(
@@ -156,6 +160,8 @@ class _MessageBubbleState extends State<MessageBubble>
                       ),
                   ] else if (widget.message is DiagramMessage) ...[
                     // Don't show export here - it's already in the diagram preview
+                  ] else if (widget.message is PresentationMessage) ...[
+                    // Don't show export here - it's already in the presentation preview
                   ] else ...[
                     // For text messages, show all options
                     // Copy - always visible for AI messages
