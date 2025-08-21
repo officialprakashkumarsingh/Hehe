@@ -449,6 +449,43 @@ class _MessageBubbleState extends State<MessageBubble>
     );
   }
 
+  Widget _buildPresentationContent(PresentationMessage presentationMessage) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Show the prompt
+        if (presentationMessage.prompt.isNotEmpty) ...[
+          Text(
+            'Presentation: ${presentationMessage.prompt}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        
+        // Show the presentation preview
+        if (presentationMessage.slides.isNotEmpty)
+          PresentationPreview(
+            slides: presentationMessage.slides,
+            title: presentationMessage.prompt,
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Failed to generate presentation slides',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildUploadedImage(String imageData) {
     try {
       final base64Data = imageData.split(',')[1];
