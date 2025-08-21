@@ -189,26 +189,65 @@ class RobotPainter extends CustomPainter {
     
     canvas.restore();
     
-    // Eyes
-    final eyePaint = Paint()
-      ..color = backgroundColor.withOpacity(blinkValue)
-      ..style = PaintingStyle.fill;
-    
-    final eyeRadius = headRadius * 0.15;
+    // Eyes with more detail
+    final eyeRadius = headRadius * 0.18;
     final eyeY = center.dy - headRadius * 0.2;
     
-    // Left eye
+    // Eye whites
+    final eyeWhitePaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+    
+    // Left eye white
     canvas.drawCircle(
       Offset(center.dx - headRadius * 0.35, eyeY),
       eyeRadius,
-      eyePaint,
+      eyeWhitePaint,
     );
     
-    // Right eye
+    // Right eye white
     canvas.drawCircle(
       Offset(center.dx + headRadius * 0.35, eyeY),
       eyeRadius,
-      eyePaint,
+      eyeWhitePaint,
+    );
+    
+    // Eye pupils (affected by blink)
+    final pupilPaint = Paint()
+      ..color = primaryColor.withOpacity(blinkValue)
+      ..style = PaintingStyle.fill;
+    
+    final pupilRadius = eyeRadius * 0.5;
+    
+    // Left pupil
+    canvas.drawCircle(
+      Offset(center.dx - headRadius * 0.35, eyeY),
+      pupilRadius,
+      pupilPaint,
+    );
+    
+    // Right pupil
+    canvas.drawCircle(
+      Offset(center.dx + headRadius * 0.35, eyeY),
+      pupilRadius,
+      pupilPaint,
+    );
+    
+    // Eye sparkles
+    final sparklePaint = Paint()
+      ..color = Colors.white.withOpacity(0.8 * blinkValue)
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(
+      Offset(center.dx - headRadius * 0.35 + pupilRadius * 0.3, eyeY - pupilRadius * 0.3),
+      2,
+      sparklePaint,
+    );
+    
+    canvas.drawCircle(
+      Offset(center.dx + headRadius * 0.35 + pupilRadius * 0.3, eyeY - pupilRadius * 0.3),
+      2,
+      sparklePaint,
     );
     
     // Mouth (curved line)
