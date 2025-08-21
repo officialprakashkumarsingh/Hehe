@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/services/diagram_service.dart';
 
@@ -87,6 +91,66 @@ class _DiagramPreviewState extends State<DiagramPreview> {
     );
   }
 
+  Future<void> _exportAsImage() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Exporting diagram as image...'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      );
+      
+      // Download the image
+      final response = await http.get(Uri.parse(_diagramUrl));
+      
+      if (response.statusCode == 200) {
+        // Save to temporary file
+        final tempDir = await getTemporaryDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final file = File('${tempDir.path}/diagram_$timestamp.png');
+        await file.writeAsBytes(response.bodyBytes);
+        
+        // Share the image file
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: 'Diagram exported from AhamAI',
+        );
+        
+        // Clean up
+        await file.delete();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Diagram exported successfully!'),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('Failed to download diagram');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -110,7 +174,7 @@ class _DiagramPreviewState extends State<DiagramPreview> {
               child: _buildContent(),
             ),
             // Export button overlay
-            if (!_hasError && !_isLoading && widget.onExport != null)
+            if (!_hasError && !_isLoading)
               Positioned(
                 top: 8,
                 right: 8,
@@ -119,7 +183,7 @@ class _DiagramPreviewState extends State<DiagramPreview> {
                   borderRadius: BorderRadius.circular(20),
                   elevation: 2,
                   child: InkWell(
-                    onTap: widget.onExport,
+                    onTap: _exportAsImage,
                     borderRadius: BorderRadius.circular(20),
                     child: Padding(
                       padding: const EdgeInsets.all(8),

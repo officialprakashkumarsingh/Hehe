@@ -103,9 +103,57 @@ class _NewChatPageState extends State<NewChatPage>
   }
 
   Widget _buildWelcomeSection() {
+    String greeting = '';
+    final hour = DateTime.now().hour;
+    
+    if (hour >= 5 && hour < 12) {
+      greeting = 'Good morning! ☀️';
+    } else if (hour >= 12 && hour < 17) {
+      greeting = 'Good afternoon! 🌤️';
+    } else if (hour >= 17 && hour < 21) {
+      greeting = 'Good evening! 🌅';
+    } else {
+      greeting = 'Good night! 🌙';
+    }
+    
     return Center(
       child: Column(
         children: [
+          // Greeting bubble
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  greeting,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Let\'s create something amazing!',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Robot
           Container(
             width: 100,
             height: 100,

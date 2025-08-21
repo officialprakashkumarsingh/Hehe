@@ -146,14 +146,16 @@ class _MessageBubbleState extends State<MessageBubble>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // For image and diagram messages, only show export
-                  if (widget.message is ImageMessage || widget.message is DiagramMessage) ...[
+                  // For image messages, show export
+                  if (widget.message is ImageMessage) ...[
                     if (widget.onExport != null)
                       _ActionButton(
                         icon: Icons.download_outlined,
                         label: 'Export',
                         onPressed: widget.onExport!,
                       ),
+                  ] else if (widget.message is DiagramMessage) ...[
+                    // Don't show export here - it's already in the diagram preview
                   ] else ...[
                     // For text messages, show all options
                     // Copy - always visible for AI messages
@@ -422,7 +424,6 @@ class _MessageBubbleState extends State<MessageBubble>
         if (diagramMessage.mermaidCode.isNotEmpty)
           DiagramPreview(
             mermaidCode: diagramMessage.mermaidCode,
-            onExport: widget.onExport,
           )
         else
           Container(
