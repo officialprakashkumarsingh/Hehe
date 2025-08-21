@@ -40,17 +40,24 @@ class DiagramMessage extends Message {
     timestamp: DateTime.now(),
   );
   
+  @override
   DiagramMessage copyWith({
-    String? prompt,
-    String? mermaidCode,
+    String? id,
+    String? content,
+    MessageType? type,
+    DateTime? timestamp,
     bool? isStreaming,
     bool? hasError,
+    String? prompt,
+    String? mermaidCode,
   }) {
     return DiagramMessage(
-      id: id,
+      id: id ?? this.id,
       prompt: prompt ?? this.prompt,
-      mermaidCode: mermaidCode ?? this.mermaidCode,
-      timestamp: timestamp,
+      mermaidCode: (content != null && content != this.content) 
+          ? content  // If content is explicitly changed, use it as mermaidCode
+          : (mermaidCode ?? this.mermaidCode),
+      timestamp: timestamp ?? this.timestamp,
       isStreaming: isStreaming ?? this.isStreaming,
       hasError: hasError ?? this.hasError,
     );
