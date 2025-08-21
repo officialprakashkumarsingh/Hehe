@@ -6,16 +6,12 @@ import '../../core/services/diagram_service.dart';
 
 class DiagramPreview extends StatefulWidget {
   final String mermaidCode;
-  final VoidCallback? onCopy;
   final VoidCallback? onExport;
-  final VoidCallback? onEdit;
 
   const DiagramPreview({
     super.key,
     required this.mermaidCode,
-    this.onCopy,
     this.onExport,
-    this.onEdit,
   });
 
   @override
@@ -101,72 +97,43 @@ class _DiagramPreviewState extends State<DiagramPreview> {
           color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header with actions
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            // Diagram content
+            Container(
+              constraints: const BoxConstraints(
+                minHeight: 200,
+                maxHeight: 400,
+              ),
+              child: _buildContent(),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.account_tree_outlined,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Diagram Preview',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
+            // Export button overlay
+            if (!_hasError && !_isLoading && widget.onExport != null)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Material(
+                  color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(20),
+                  elevation: 2,
+                  child: InkWell(
+                    onTap: widget.onExport,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.download_outlined,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ),
                 ),
-                const Spacer(),
-                // Action buttons
-                if (!_hasError) ...[
-                  IconButton(
-                    icon: const Icon(Icons.copy_outlined, size: 18),
-                    onPressed: _copyCode,
-                    tooltip: 'Copy code',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  ),
-                  if (widget.onEdit != null)
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      onPressed: widget.onEdit,
-                      tooltip: 'Edit diagram',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                  if (widget.onExport != null)
-                    IconButton(
-                      icon: const Icon(Icons.download_outlined, size: 18),
-                      onPressed: widget.onExport,
-                      tooltip: 'Export diagram',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                ],
-              ],
-            ),
-          ),
-          
-          // Diagram content
-          Container(
-            constraints: const BoxConstraints(
-              minHeight: 200,
-              maxHeight: 400,
-            ),
-            child: _buildContent(),
-          ),
-        ],
+              ),
+          ],
+        ),
       ),
     );
   }

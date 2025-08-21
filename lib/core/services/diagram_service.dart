@@ -198,16 +198,63 @@ class DiagramService extends ChangeNotifier {
 
   // Fix common Mermaid code issues
   static String _fixCommonIssues(String code) {
+    String fixed = code.trim();
+    
+    // Remove any markdown code block markers if present
+    fixed = fixed.replaceAll(RegExp(r'```mermaid\s*', caseSensitive: false), '');
+    fixed = fixed.replaceAll(RegExp(r'```\s*'), '');
+    
     // If no diagram type specified, try to infer or default to flowchart
-    if (!code.contains('graph') && !code.contains('Diagram')) {
-      // Check for common patterns
-      if (code.contains('-->') || code.contains('->')) {
-        return 'graph TD\n$code';
-      } else if (code.contains('->>') || code.contains('-->>')) {
-        return 'sequenceDiagram\n$code';
+    if (!_isValidMermaidCode(fixed)) {
+      // Check for common patterns and add appropriate header
+      if (fixed.contains('-->') || fixed.contains('->')) {
+        // Flowchart patterns
+        fixed = 'graph TD\n    $fixed';
+      } else if (fixed.contains('->>') || fixed.contains('-->>')) {
+        // Sequence diagram patterns
+        fixed = 'sequenceDiagram\n    $fixed';
+      } else if (fixed.contains('pie title') || fixed.contains('"') && fixed.contains(':')) {
+        // Pie chart pattern
+        if (!fixed.startsWith('pie')) {
+          fixed = 'pie title Chart\n    $fixed';
+        }
+      } else if (fixed.contains('gantt')) {
+        // Gantt chart
+        if (!fixed.startsWith('gantt')) {
+          fixed = 'gantt\n    $fixed';
+        }
+      } else {
+        // Default to flowchart
+        fixed = 'graph TD\n    A[Start] --> B[Process]\n    B --> C[End]';
       }
     }
-    return code;
+    
+    // Fix indentation issues
+    final lines = fixed.split('\n');
+    final fixedLines = <String>[];
+    bool inDiagramDef = false;
+    
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      
+      // Check if this is a diagram type declaration
+      if (_isValidMermaidCode(trimmed)) {
+        fixedLines.add(trimmed);
+        inDiagramDef = true;
+      } else if (inDiagramDef) {
+        // Add proper indentation for diagram content
+        if (!line.startsWith('    ') && !line.startsWith('\t')) {
+          fixedLines.add('    $trimmed');
+        } else {
+          fixedLines.add(line);
+        }
+      } else {
+        fixedLines.add(trimmed);
+      }
+    }
+    
+    return fixedLines.join('\n');
   }
 
   // Simple compression for URL (using base64)

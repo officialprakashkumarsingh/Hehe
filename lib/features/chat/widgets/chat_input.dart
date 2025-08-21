@@ -13,6 +13,7 @@ class ChatInput extends StatefulWidget {
   final TextEditingController? controller;
   final Function(String, {bool useWebSearch}) onSendMessage;
   final Function(String)? onGenerateImage;
+  final Function(String)? onGenerateDiagram;
   final Function(String, String)? onVisionAnalysis;
   final VoidCallback? onStopStreaming;
   final VoidCallback? onTemplateRequest;
@@ -25,6 +26,7 @@ class ChatInput extends StatefulWidget {
     this.controller,
     required this.onSendMessage,
     this.onGenerateImage,
+    this.onGenerateDiagram,
     this.onVisionAnalysis,
     this.onStopStreaming,
     this.onTemplateRequest,
@@ -45,6 +47,7 @@ class _ChatInputState extends State<ChatInput> {
   bool _showEnhancerSuggestion = false;
   bool _webSearchEnabled = false;
   bool _imageGenerationMode = false;
+  bool _diagramGenerationMode = false;
   String? _pendingImageData;
   Timer? _typingTimer;
 
@@ -209,8 +212,10 @@ class _ChatInputState extends State<ChatInput> {
                           ? (_pendingImageData != null
                               ? '📸 Ask something about the uploaded image...'
                               : _imageGenerationMode 
-                                  ? 'Describe the image you want to generate...' 
-                                  : 'Type your message...') 
+                                  ? 'Describe the image you want to generate...'
+                                  : _diagramGenerationMode
+                                      ? 'Describe the diagram you want to create...' 
+                                      : 'Type your message...') 
                           : 'Select a model to start chatting',
                       hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
@@ -244,7 +249,7 @@ class _ChatInputState extends State<ChatInput> {
                             : Theme.of(context).colorScheme.outline.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(24),
                     child: InkWell(
-                      onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : _handleSend) : null),
+                      onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : (_diagramGenerationMode ? _handleDiagramGenerationDirect : _handleSend)) : null),
                       borderRadius: BorderRadius.circular(24),
                       child: Container(
                         width: 48,
@@ -252,7 +257,9 @@ class _ChatInputState extends State<ChatInput> {
                         child: Icon(
                           widget.isLoading
                               ? Icons.stop_rounded
-                              : (_imageGenerationMode ? Icons.auto_awesome_outlined : Icons.arrow_upward_rounded),
+                              : (_imageGenerationMode ? Icons.auto_awesome_outlined 
+                                  : (_diagramGenerationMode ? Icons.account_tree_outlined 
+                                      : Icons.arrow_upward_rounded)),
                           color: widget.isLoading
                               ? Colors.white
                               : (_canSend
@@ -289,6 +296,19 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
+  void _handleDiagramGenerationDirect() {
+    final prompt = _controller.text.trim();
+    if (prompt.isNotEmpty && widget.onGenerateDiagram != null) {
+      widget.onGenerateDiagram!(prompt);
+      _controller.clear();
+      setState(() {
+        _diagramGenerationMode = false;
+      });
+      _updateSendButton();
+      HapticFeedback.lightImpact();
+    }
+  }
+
   void _showExtensionsSheet() {
     showModalBottomSheet(
       context: context,
@@ -297,6 +317,7 @@ class _ChatInputState extends State<ChatInput> {
       builder: (context) => _ExtensionsBottomSheet(
         webSearchEnabled: _webSearchEnabled,
         imageGenerationMode: _imageGenerationMode,
+        diagramGenerationMode: _diagramGenerationMode,
         onImageUpload: () async {
           Navigator.pop(context);
           await _handleImageUpload();
@@ -304,14 +325,20 @@ class _ChatInputState extends State<ChatInput> {
         onWebSearchToggle: (enabled) {
           setState(() {
             _webSearchEnabled = enabled;
-            if (enabled) _imageGenerationMode = false;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _diagramGenerationMode = false;
+            }
           });
           Navigator.pop(context);
         },
         onImageModeToggle: (enabled) {
           setState(() {
             _imageGenerationMode = enabled;
-            if (enabled) _webSearchEnabled = false;
+            if (enabled) {
+              _webSearchEnabled = false;
+              _diagramGenerationMode = false;
+            }
           });
           Navigator.pop(context);
         },
@@ -319,33 +346,21 @@ class _ChatInputState extends State<ChatInput> {
           Navigator.pop(context);
           _showPromptEnhancer();
         },
-        onDiagramGeneration: () async {
+        onDiagramToggle: (enabled) {
+          setState(() {
+            _diagramGenerationMode = enabled;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _webSearchEnabled = false;
+            }
+          });
           Navigator.pop(context);
-          await _showDiagramGenerator();
         },
       ),
     );
   }
 
-  Future<void> _showDiagramGenerator() async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => const DiagramGeneratorDialog(),
-    );
-    
-    if (result != null && result.isNotEmpty) {
-      // Insert the diagram code into the message
-      final currentText = _controller.text;
-      final newText = currentText.isEmpty 
-          ? '```mermaid\n$result\n```'
-          : '$currentText\n\n```mermaid\n$result\n```';
-      
-      _controller.text = newText;
-      _controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: _controller.text.length),
-      );
-    }
-  }
+
 
   Future<void> _handleImageUpload() async {
     try {
@@ -401,20 +416,22 @@ class _ChatInputState extends State<ChatInput> {
 class _ExtensionsBottomSheet extends StatelessWidget {
   final bool webSearchEnabled;
   final bool imageGenerationMode;
+  final bool diagramGenerationMode;
   final VoidCallback onImageUpload;
   final Function(bool) onWebSearchToggle;
   final Function(bool) onImageModeToggle;
+  final Function(bool) onDiagramToggle;
   final VoidCallback onEnhancePrompt;
-  final VoidCallback onDiagramGeneration;
 
   const _ExtensionsBottomSheet({
     required this.webSearchEnabled,
     required this.imageGenerationMode,
+    this.diagramGenerationMode = false,
     required this.onImageUpload,
     required this.onWebSearchToggle,
     required this.onImageModeToggle,
+    required this.onDiagramToggle,
     required this.onEnhancePrompt,
-    required this.onDiagramGeneration,
   });
 
   @override
@@ -502,8 +519,9 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                   icon: Icons.account_tree_outlined,
                   title: 'Diagram Generation',
                   subtitle: 'Create flowcharts, sequence diagrams, and more',
+                  isToggled: diagramGenerationMode,
                   iconSize: 20,
-                  onTap: onDiagramGeneration,
+                  onTap: () => onDiagramToggle(!diagramGenerationMode),
                 ),
               ],
             ),
