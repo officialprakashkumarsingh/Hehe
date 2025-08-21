@@ -205,6 +205,154 @@ class _PresentationPreviewState extends State<PresentationPreview> {
     }
   }
   
+  String _cleanTextForPdf(String text) {
+    // The Noto font with emoji support will handle special characters
+    return text;
+  }
+  
+  pw.Widget _buildPdfMarkdownContent(String content, {double fontSize = 16, bool isInline = false}) {
+    if (isInline) {
+      // For inline content like bullet points, just return simple text
+      return pw.Text(
+        content,
+        style: pw.TextStyle(fontSize: fontSize),
+      );
+    }
+    
+    final lines = content.split('\n');
+    final widgets = <pw.Widget>[];
+    
+    for (final line in lines) {
+      if (line.trim().isEmpty) {
+        widgets.add(pw.SizedBox(height: 8));
+      } else if (line.startsWith('# ')) {
+        // H1 Header
+        widgets.add(pw.Text(
+          line.substring(2),
+          style: pw.TextStyle(
+            fontSize: 24,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue900,
+          ),
+        ));
+      } else if (line.startsWith('## ')) {
+        // H2 Header
+        widgets.add(pw.Text(
+          line.substring(3),
+          style: pw.TextStyle(
+            fontSize: 20,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue800,
+          ),
+        ));
+      } else if (line.startsWith('### ')) {
+        // H3 Header
+        widgets.add(pw.Text(
+          line.substring(4),
+          style: pw.TextStyle(
+            fontSize: 18,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue700,
+          ),
+        ));
+      } else if (line.startsWith('> ')) {
+        // Blockquote
+        widgets.add(pw.Container(
+          padding: const pw.EdgeInsets.only(left: 10),
+          decoration: pw.BoxDecoration(
+            border: pw.Border(
+              left: pw.BorderSide(
+                color: PdfColors.grey400,
+                width: 3,
+              ),
+            ),
+          ),
+          child: pw.Text(
+            line.substring(2),
+            style: pw.TextStyle(
+              fontSize: fontSize - 1,
+              color: PdfColors.grey700,
+              fontStyle: pw.FontStyle.italic,
+            ),
+          ),
+        ));
+      } else if (line.startsWith('```') || line.endsWith('```')) {
+        // Code block - skip the backticks
+        continue;
+      } else if (line.contains('**') && line.indexOf('**') != line.lastIndexOf('**')) {
+        // Bold text - simple approach
+        final processedLine = line.replaceAll('**', '');
+        widgets.add(pw.Text(
+          processedLine,
+          style: pw.TextStyle(
+            fontSize: fontSize,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ));
+      } else if (line.contains('*') && line.indexOf('*') != line.lastIndexOf('*') && !line.contains('**')) {
+        // Italic text - simple approach
+        final processedLine = line.replaceAll('*', '');
+        widgets.add(pw.Text(
+          processedLine,
+          style: pw.TextStyle(
+            fontSize: fontSize,
+            fontStyle: pw.FontStyle.italic,
+          ),
+        ));
+      } else if (line.contains('`') && line.indexOf('`') != line.lastIndexOf('`')) {
+        // Inline code - simple approach
+        final processedLine = line.replaceAll('`', '');
+        widgets.add(pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.grey200,
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(3)),
+          ),
+          child: pw.Text(
+            processedLine,
+            style: pw.TextStyle(
+              fontSize: fontSize - 2,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+        ));
+      } else if (line.startsWith('- ') || line.startsWith('* ')) {
+        // List item
+        widgets.add(pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('• ', 
+              style: pw.TextStyle(
+                fontSize: fontSize,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blue,
+              ),
+            ),
+            pw.Expanded(
+              child: pw.Text(
+                line.substring(2),
+                style: pw.TextStyle(fontSize: fontSize),
+              ),
+            ),
+          ],
+        ));
+      } else {
+        // Regular text
+        widgets.add(pw.Text(
+          line,
+          style: pw.TextStyle(fontSize: fontSize),
+        ));
+      }
+      
+      widgets.add(pw.SizedBox(height: 4));
+    }
+    
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     if (widget.slides.isEmpty) {
