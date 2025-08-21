@@ -603,69 +603,63 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
                 
-                // Web Search
-                _ExtensionTile(
-                  icon: Icons.search_outlined,
-                  title: 'Web Search',
-                  subtitle: 'Real-time web search',
-                  isToggled: webSearchEnabled,
-                  iconSize: 20,
-                  compact: true,
-                  onTap: () => onWebSearchToggle(!webSearchEnabled),
+                const SizedBox(height: 10),
+                
+                // Second row - Generation modes
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.auto_awesome_outlined,
+                        title: 'Image',
+                        subtitle: '',
+                        isToggled: imageGenerationMode,
+                        onTap: () => onImageModeToggle(!imageGenerationMode),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.account_tree_outlined,
+                        title: 'Diagram',
+                        subtitle: '',
+                        isToggled: diagramGenerationMode,
+                        onTap: () => onDiagramToggle(!diagramGenerationMode),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.bar_chart_outlined,
+                        title: 'Chart',
+                        subtitle: '',
+                        isToggled: chartGenerationMode,
+                        onTap: () => onChartToggle(!chartGenerationMode),
+                      ),
+                    ),
+                  ],
                 ),
                 
                 const SizedBox(height: 10),
                 
-                // Image Generation
-                _ExtensionTile(
-                  icon: Icons.auto_awesome_outlined,
-                  title: 'Image Generation',
-                  subtitle: 'Generate images from text',
-                  isToggled: imageGenerationMode,
-                  iconSize: 20,
-                  compact: true,
-                  onTap: () => onImageModeToggle(!imageGenerationMode),
-                ),
-                
-                const SizedBox(height: 10),
-                
-                // Diagram Generation
-                _ExtensionTile(
-                  icon: Icons.account_tree_outlined,
-                  title: 'Diagram Generation',
-                  subtitle: 'Flowcharts & diagrams',
-                  isToggled: diagramGenerationMode,
-                  iconSize: 20,
-                  compact: true,
-                  onTap: () => onDiagramToggle(!diagramGenerationMode),
-                ),
-                
-                const SizedBox(height: 10),
-                
-                // Presentation Generation
-                _ExtensionTile(
-                  icon: Icons.slideshow_outlined,
-                  title: 'Presentation Generation',
-                  subtitle: 'Professional slides',
-                  isToggled: presentationGenerationMode,
-                  iconSize: 20,
-                  compact: true,
-                  onTap: () => onPresentationToggle(!presentationGenerationMode),
-                ),
-                
-                const SizedBox(height: 10),
-                
-                // Chart Generation
-                _ExtensionTile(
-                  icon: Icons.bar_chart_outlined,
-                  title: 'Chart Generation',
-                  subtitle: 'Interactive charts',
-                  isToggled: chartGenerationMode,
-                  iconSize: 20,
-                  compact: true,
-                  onTap: () => onChartToggle(!chartGenerationMode),
+                // Third row - Presentation
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.slideshow_outlined,
+                        title: 'Presentation',
+                        subtitle: '',
+                        isToggled: presentationGenerationMode,
+                        onTap: () => onPresentationToggle(!presentationGenerationMode),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Container()), // Empty spacer
+                    const SizedBox(width: 10),
+                    Expanded(child: Container()), // Empty spacer
+                  ],
                 ),
               ],
             ),

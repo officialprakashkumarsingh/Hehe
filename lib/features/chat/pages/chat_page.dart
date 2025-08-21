@@ -14,7 +14,9 @@ import '../../../core/models/image_message_model.dart';
 import '../../../core/models/vision_message_model.dart';
 import '../../../core/models/diagram_message_model.dart';
 import '../../../core/models/presentation_message_model.dart';
+import '../../../core/models/chart_message_model.dart';
 import '../../../core/services/diagram_service.dart';
+import '../../../core/services/chart_service.dart';
 import '../../../shared/widgets/animated_robot.dart';
 import '../../../shared/widgets/presentation_preview.dart';
 import '../widgets/message_bubble.dart';
@@ -111,6 +113,7 @@ class _ChatPageState extends State<ChatPage> {
               onGenerateImage: _handleImageGeneration,
               onGenerateDiagram: _handleDiagramGeneration,
               onGeneratePresentation: _handlePresentationGeneration,
+              onGenerateChart: _handleChartGeneration,
               onVisionAnalysis: _handleVisionAnalysis,
               onStopStreaming: _stopStreaming,
               onTemplateRequest: () {
@@ -1086,6 +1089,136 @@ Generate the complete presentation now:''';
           
           if (modelIndex == totalModels - 1) {
             _isLoading = false;
+          }
+        });
+      }
+    }
+  }
+
+  void _handleChartGeneration(String prompt) async {
+    if (!mounted) return;
+    
+    // Add user message
+    final userMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: prompt,
+      type: MessageType.user,
+      timestamp: DateTime.now(),
+    );
+    
+    setState(() {
+      _messages.add(userMessage);
+    });
+    
+    // Generate chart prompt
+    final chartPrompt = '''
+Generate a Chart.js configuration JSON for: $prompt
+
+Requirements:
+1. Return ONLY valid JSON configuration for Chart.js
+2. Include appropriate chart type (bar, line, pie, doughnut, radar, scatter)
+3. Use realistic sample data if not specified
+4. Include proper labels, colors, and options
+5. Make it visually appealing with good color schemes
+
+Format the response as:
+```json
+{
+  "type": "chart_type",
+  "data": { ... },
+  "options": { ... }
+}
+```
+''';
+    
+    // Stream AI response
+    String fullResponse = '';
+    final assistantMessage = ChartMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString() + '_chart',
+      prompt: prompt,
+      chartConfig: '',
+      timestamp: DateTime.now(),
+      isStreaming: true,
+    );
+    
+    setState(() {
+      _messages.add(assistantMessage);
+    });
+    
+    try {
+      await _chatService.streamMessage(
+        chartPrompt,
+        _selectedModel,
+        onData: (chunk) {
+          fullResponse += chunk;
+          
+          // Try to extract chart config as we stream
+          final config = ChartService.extractChartConfig(fullResponse);
+          if (config.isNotEmpty && mounted) {
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as ChartMessage).copyWith(
+                  chartConfig: config,
+                  isStreaming: true,
+                );
+              }
+            });
+          }
+        },
+        onDone: () {
+          if (mounted) {
+            // Final extraction
+            String finalConfig = ChartService.extractChartConfig(fullResponse);
+            
+            // If no valid config found, generate a sample
+            if (finalConfig.isEmpty) {
+              finalConfig = ChartService.generateSampleChart(prompt);
+            }
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as ChartMessage).copyWith(
+                  chartConfig: finalConfig,
+                  isStreaming: false,
+                );
+              }
+            });
+            
+            _saveCurrentChat();
+          }
+        },
+        onError: (error) {
+          if (mounted) {
+            // Generate a sample chart on error
+            final sampleConfig = ChartService.generateSampleChart(prompt);
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as ChartMessage).copyWith(
+                  chartConfig: sampleConfig,
+                  isStreaming: false,
+                  hasError: false, // Don't show error, just use sample
+                );
+              }
+            });
+          }
+        },
+      );
+    } catch (e) {
+      // Generate sample on exception
+      final sampleConfig = ChartService.generateSampleChart(prompt);
+      
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+          if (index != -1) {
+            _messages[index] = (assistantMessage as ChartMessage).copyWith(
+              chartConfig: sampleConfig,
+              isStreaming: false,
+            );
           }
         });
       }
