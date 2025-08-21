@@ -87,10 +87,10 @@ class _ChartPreviewState extends State<ChartPreview> {
       ),
       child: Column(
         children: [
-          // Chart display area
+          // Chart display area with floating export button
           Expanded(
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
               child: Stack(
                 children: [
                   WebViewWidget(controller: _controller),
@@ -137,41 +137,40 @@ class _ChartPreviewState extends State<ChartPreview> {
                         ),
                       ),
                     ),
-                ],
-              ),
-            ),
-          ),
-          
-          // Export button
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-              border: Border(
-                top: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
-                ),
-              ),
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: (_isLoading || _hasError || _isExporting) ? null : _exportAsImage,
-                icon: _isExporting
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: theme.colorScheme.onPrimary,
+                  
+                  // Export button overlay (like diagram)
+                  if (!_hasError && !_isLoading)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: theme.colorScheme.surface.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(20),
+                        elevation: 2,
+                        child: InkWell(
+                          onTap: _isExporting ? null : _exportAsImage,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: _isExporting
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.download_outlined,
+                                    size: 20,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                          ),
                         ),
-                      )
-                    : const Icon(Icons.download),
-                label: Text(_isExporting ? 'Exporting...' : 'Export Chart'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

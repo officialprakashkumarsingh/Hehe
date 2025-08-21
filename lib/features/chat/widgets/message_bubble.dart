@@ -137,7 +137,12 @@ class _MessageBubbleState extends State<MessageBubble>
                 ],
                 
                 // Streaming indicator - only show if no content yet
-                if (isStreaming && widget.message.content.isEmpty) ...[
+                // Don't show for DiagramMessage, PresentationMessage, or ChartMessage
+                if (isStreaming && 
+                    widget.message.content.isEmpty &&
+                    widget.message is! DiagramMessage &&
+                    widget.message is! PresentationMessage &&
+                    widget.message is! ChartMessage) ...[
                   const SizedBox(height: 8),
                   ThinkingIndicator(
                     color: Theme.of(context).colorScheme.primary,
