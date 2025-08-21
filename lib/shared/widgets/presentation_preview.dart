@@ -69,6 +69,10 @@ class _PresentationPreviewState extends State<PresentationPreview> {
           ? PdfColors.grey300 
           : PdfColors.grey700;
       
+      final pdfAccentColor = isDarkMode
+          ? PdfColors.grey800
+          : PdfColors.grey100;
+      
       final pdf = pw.Document(
         theme: pw.ThemeData.withFont(
           base: await PdfGoogleFonts.notoSansRegular(),
@@ -85,19 +89,21 @@ class _PresentationPreviewState extends State<PresentationPreview> {
             pageFormat: PdfPageFormat.a4.landscape,
             build: (context) {
               return pw.Container(
-                padding: const pw.EdgeInsets.all(40),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    // Title with markdown support
-                    pw.Text(
-                      _cleanTextForPdf(slide.title),
-                      style: pw.TextStyle(
-                        fontSize: 32,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue900,
+                color: pdfBackgroundColor,
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.all(40),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      // Title with theme color
+                      pw.Text(
+                        _cleanTextForPdf(slide.title),
+                        style: pw.TextStyle(
+                          fontSize: 32,
+                          fontWeight: pw.FontWeight.bold,
+                          color: pdfPrimaryColor,
+                        ),
                       ),
-                    ),
                     pw.SizedBox(height: 20),
                     
                     // Content
@@ -106,7 +112,12 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           if (slide.content.isNotEmpty)
-                            _buildPdfMarkdownContent(slide.content),
+                            _buildPdfMarkdownContent(
+                              slide.content,
+                              textColor: pdfTextColor,
+                              primaryColor: pdfPrimaryColor,
+                              secondaryColor: pdfSecondaryTextColor,
+                            ),
                           
                           if (slide.bulletPoints != null) ...[
                             pw.SizedBox(height: 20),
@@ -119,13 +130,16 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                                     style: pw.TextStyle(
                                       fontSize: 18,
                                       fontWeight: pw.FontWeight.bold,
-                                      color: PdfColors.blue,
+                                      color: pdfPrimaryColor,
                                     ),
                                   ),
                                   pw.Expanded(
                                     child: pw.Text(
                                       _cleanTextForPdf(point),
-                                      style: const pw.TextStyle(fontSize: 16),
+                                      style: pw.TextStyle(
+                                        fontSize: 16,
+                                        color: pdfTextColor,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -139,7 +153,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                             pw.Container(
                               padding: const pw.EdgeInsets.all(10),
                               decoration: pw.BoxDecoration(
-                                color: PdfColors.grey100,
+                                color: pdfAccentColor,
                                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
                               ),
                               child: pw.Column(
@@ -150,7 +164,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                                     style: pw.TextStyle(
                                       fontSize: 12,
                                       fontWeight: pw.FontWeight.bold,
-                                      color: PdfColors.grey700,
+                                      color: pdfSecondaryTextColor,
                                     ),
                                   ),
                                   pw.SizedBox(height: 5),
@@ -158,7 +172,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                                     _cleanTextForPdf(slide.notes!),
                                     style: pw.TextStyle(
                                       fontSize: 11,
-                                      color: PdfColors.grey800,
+                                      color: pdfTextColor,
                                     ),
                                   ),
                                 ],
@@ -175,11 +189,11 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                       children: [
                         pw.Text(
                           widget.title,
-                          style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey),
+                          style: pw.TextStyle(fontSize: 12, color: pdfSecondaryTextColor),
                         ),
                         pw.Text(
-                          'Slide ${widget.slides.indexOf(slide) + 1} of ${widget.slides.length}',
-                          style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey),
+                          'Slide ${index + 1} of ${widget.slides.length}',
+                          style: pw.TextStyle(fontSize: 12, color: pdfSecondaryTextColor),
                         ),
                       ],
                     ),
@@ -235,12 +249,26 @@ class _PresentationPreviewState extends State<PresentationPreview> {
     return text;
   }
   
-  pw.Widget _buildPdfMarkdownContent(String content, {double fontSize = 16, bool isInline = false}) {
+  pw.Widget _buildPdfMarkdownContent(
+    String content, {
+    PdfColor? textColor,
+    PdfColor? primaryColor,
+    PdfColor? secondaryColor,
+    double fontSize = 16,
+    bool isInline = false,
+  }) {
+    // Use provided colors or defaults
+    textColor ??= PdfColors.grey900;
+    primaryColor ??= PdfColors.blue;
+    secondaryColor ??= PdfColors.grey700;
     if (isInline) {
       // For inline content like bullet points, just return simple text
       return pw.Text(
         content,
-        style: pw.TextStyle(fontSize: fontSize),
+        style: pw.TextStyle(
+          fontSize: fontSize,
+          color: textColor,
+        ),
       );
     }
     
@@ -257,7 +285,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
           style: pw.TextStyle(
             fontSize: 24,
             fontWeight: pw.FontWeight.bold,
-            color: PdfColors.blue900,
+            color: primaryColor,
           ),
         ));
       } else if (line.startsWith('## ')) {
@@ -267,7 +295,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
           style: pw.TextStyle(
             fontSize: 20,
             fontWeight: pw.FontWeight.bold,
-            color: PdfColors.blue800,
+            color: primaryColor,
           ),
         ));
       } else if (line.startsWith('### ')) {
@@ -277,7 +305,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
           style: pw.TextStyle(
             fontSize: 18,
             fontWeight: pw.FontWeight.bold,
-            color: PdfColors.blue700,
+            color: primaryColor,
           ),
         ));
       } else if (line.startsWith('> ')) {
@@ -287,7 +315,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
           decoration: pw.BoxDecoration(
             border: pw.Border(
               left: pw.BorderSide(
-                color: PdfColors.grey400,
+                color: primaryColor,
                 width: 3,
               ),
             ),
@@ -296,7 +324,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
             line.substring(2),
             style: pw.TextStyle(
               fontSize: fontSize - 1,
-              color: PdfColors.grey700,
+              color: secondaryColor,
               fontStyle: pw.FontStyle.italic,
             ),
           ),
@@ -312,6 +340,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
           style: pw.TextStyle(
             fontSize: fontSize,
             fontWeight: pw.FontWeight.bold,
+            color: textColor,
           ),
         ));
       } else if (line.contains('*') && line.indexOf('*') != line.lastIndexOf('*') && !line.contains('**')) {
@@ -322,6 +351,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
           style: pw.TextStyle(
             fontSize: fontSize,
             fontStyle: pw.FontStyle.italic,
+            color: textColor,
           ),
         ));
       } else if (line.contains('`') && line.indexOf('`') != line.lastIndexOf('`')) {
@@ -350,13 +380,16 @@ class _PresentationPreviewState extends State<PresentationPreview> {
               style: pw.TextStyle(
                 fontSize: fontSize,
                 fontWeight: pw.FontWeight.bold,
-                color: PdfColors.blue,
+                color: primaryColor,
               ),
             ),
             pw.Expanded(
               child: pw.Text(
                 line.substring(2),
-                style: pw.TextStyle(fontSize: fontSize),
+                style: pw.TextStyle(
+                  fontSize: fontSize,
+                  color: textColor,
+                ),
               ),
             ),
           ],
@@ -365,7 +398,10 @@ class _PresentationPreviewState extends State<PresentationPreview> {
         // Regular text
         widgets.add(pw.Text(
           line,
-          style: pw.TextStyle(fontSize: fontSize),
+          style: pw.TextStyle(
+            fontSize: fontSize,
+            color: textColor,
+          ),
         ));
       }
       
