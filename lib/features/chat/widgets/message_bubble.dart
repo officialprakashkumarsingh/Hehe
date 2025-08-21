@@ -8,11 +8,15 @@ import '../../../core/models/vision_message_model.dart';
 import '../../../core/models/diagram_message_model.dart';
 import '../../../core/models/presentation_message_model.dart';
 import '../../../core/models/chart_message_model.dart';
+import '../../../core/models/flashcard_message_model.dart';
+import '../../../core/models/quiz_message_model.dart';
 import '../../../shared/widgets/markdown_message.dart';
 import '../../../shared/widgets/thinking_animation.dart';
 import '../../../shared/widgets/diagram_preview.dart';
 import '../../../shared/widgets/presentation_preview.dart';
 import '../../../shared/widgets/chart_preview.dart';
+import '../../../shared/widgets/flashcard_preview.dart';
+import '../../../shared/widgets/quiz_preview.dart';
 
 class MessageBubble extends StatefulWidget {
   final Message message;
@@ -127,6 +131,10 @@ class _MessageBubbleState extends State<MessageBubble>
                   _buildPresentationContent(widget.message as PresentationMessage),
                 ] else if (widget.message is ChartMessage) ...[
                   _buildChartContent(widget.message as ChartMessage),
+                ] else if (widget.message is FlashcardMessage) ...[
+                  _buildFlashcardContent(widget.message as FlashcardMessage),
+                ] else if (widget.message is QuizMessage) ...[
+                  _buildQuizContent(widget.message as QuizMessage),
                 ] else ...[
                   // Regular message content with markdown support
                   MarkdownMessage(
@@ -142,7 +150,9 @@ class _MessageBubbleState extends State<MessageBubble>
                     widget.message.content.isEmpty &&
                     widget.message is! DiagramMessage &&
                     widget.message is! PresentationMessage &&
-                    widget.message is! ChartMessage) ...[
+                    widget.message is! ChartMessage &&
+                    widget.message is! FlashcardMessage &&
+                    widget.message is! QuizMessage) ...[
                   const SizedBox(height: 8),
                   ThinkingIndicator(
                     color: Theme.of(context).colorScheme.primary,
@@ -534,6 +544,98 @@ class _MessageBubbleState extends State<MessageBubble>
             ),
             child: Text(
               'Failed to generate chart',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFlashcardContent(FlashcardMessage flashcardMessage) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Show the prompt
+        if (flashcardMessage.prompt.isNotEmpty) ...[
+          Text(
+            'Flashcards: ${flashcardMessage.prompt}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        
+        // Show the flashcard preview
+        if (flashcardMessage.flashcards.isNotEmpty)
+          FlashcardPreview(
+            flashcards: flashcardMessage.flashcards,
+            title: flashcardMessage.prompt,
+          )
+        else if (flashcardMessage.isStreaming)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Failed to generate flashcards',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildQuizContent(QuizMessage quizMessage) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Show the prompt
+        if (quizMessage.prompt.isNotEmpty) ...[
+          Text(
+            'Quiz: ${quizMessage.prompt}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        
+        // Show the quiz preview
+        if (quizMessage.questions.isNotEmpty)
+          QuizPreview(
+            questions: quizMessage.questions,
+            title: quizMessage.prompt,
+          )
+        else if (quizMessage.isStreaming)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Failed to generate quiz',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onErrorContainer,
               ),

@@ -15,8 +15,12 @@ import '../../../core/models/vision_message_model.dart';
 import '../../../core/models/diagram_message_model.dart';
 import '../../../core/models/presentation_message_model.dart';
 import '../../../core/models/chart_message_model.dart';
+import '../../../core/models/flashcard_message_model.dart';
+import '../../../core/models/quiz_message_model.dart';
 import '../../../core/services/diagram_service.dart';
 import '../../../core/services/chart_service.dart';
+import '../../../core/services/flashcard_service.dart';
+import '../../../core/services/quiz_service.dart';
 import '../../../shared/widgets/animated_robot.dart';
 import '../../../shared/widgets/presentation_preview.dart';
 import '../widgets/message_bubble.dart';
@@ -114,6 +118,8 @@ class _ChatPageState extends State<ChatPage> {
               onGenerateDiagram: _handleDiagramGeneration,
               onGeneratePresentation: _handlePresentationGeneration,
               onGenerateChart: _handleChartGeneration,
+              onGenerateFlashcards: _handleFlashcardGeneration,
+              onGenerateQuiz: _handleQuizGeneration,
               onVisionAnalysis: _handleVisionAnalysis,
               onStopStreaming: _stopStreaming,
               onTemplateRequest: () {
@@ -1224,6 +1230,267 @@ Format the response as:
           if (index != -1) {
             _messages[index] = (assistantMessage as ChartMessage).copyWith(
               chartConfig: sampleConfig,
+              isStreaming: false,
+            );
+          }
+        });
+      }
+    }
+  }
+
+  void _handleFlashcardGeneration(String prompt) async {
+    if (!mounted) return;
+    
+    // Add user message
+    final userMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: prompt,
+      type: MessageType.user,
+      timestamp: DateTime.now(),
+    );
+    
+    setState(() {
+      _messages.add(userMessage);
+    });
+    
+    // Generate flashcard prompt
+    final flashcardPrompt = '''
+Generate flashcards for: $prompt
+
+Create educational flashcards with questions and answers.
+Format as JSON array:
+[
+  {
+    "question": "Question text",
+    "answer": "Answer text",
+    "explanation": "Optional explanation"
+  }
+]
+
+Generate 5-10 flashcards covering key concepts.
+''';
+    
+    // Stream AI response
+    String fullResponse = '';
+    final assistantMessage = FlashcardMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString() + '_flashcard',
+      prompt: prompt,
+      flashcards: [],
+      timestamp: DateTime.now(),
+      isStreaming: true,
+    );
+    
+    setState(() {
+      _messages.add(assistantMessage);
+    });
+    
+    try {
+      final selectedModel = ModelService.instance.selectedModel;
+      final stream = await ApiService.sendMessage(
+        message: flashcardPrompt,
+        model: selectedModel,
+        conversationHistory: [],
+        systemPrompt: MessageModeService.instance.effectiveSystemPrompt,
+      );
+      
+      stream.listen(
+        (chunk) {
+          fullResponse += chunk;
+          
+          // Try to extract flashcards as we stream
+          final flashcards = FlashcardService.extractFlashcards(fullResponse);
+          if (flashcards.isNotEmpty && mounted) {
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as FlashcardMessage).copyWith(
+                  flashcards: flashcards,
+                  isStreaming: true,
+                );
+              }
+            });
+          }
+        },
+        onDone: () {
+          if (mounted) {
+            // Final extraction
+            List<FlashcardItem> finalFlashcards = FlashcardService.extractFlashcards(fullResponse);
+            
+            // If no flashcards found, generate samples
+            if (finalFlashcards.isEmpty) {
+              finalFlashcards = FlashcardService.generateSampleFlashcards(prompt);
+            }
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as FlashcardMessage).copyWith(
+                  flashcards: finalFlashcards,
+                  isStreaming: false,
+                );
+              }
+            });
+          }
+        },
+        onError: (error) {
+          if (mounted) {
+            // Generate sample flashcards on error
+            final sampleFlashcards = FlashcardService.generateSampleFlashcards(prompt);
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as FlashcardMessage).copyWith(
+                  flashcards: sampleFlashcards,
+                  isStreaming: false,
+                  hasError: false,
+                );
+              }
+            });
+          }
+        },
+      );
+    } catch (e) {
+      // Generate sample on exception
+      final sampleFlashcards = FlashcardService.generateSampleFlashcards(prompt);
+      
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+          if (index != -1) {
+            _messages[index] = (assistantMessage as FlashcardMessage).copyWith(
+              flashcards: sampleFlashcards,
+              isStreaming: false,
+            );
+          }
+        });
+      }
+    }
+  }
+
+  void _handleQuizGeneration(String prompt) async {
+    if (!mounted) return;
+    
+    // Add user message
+    final userMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: prompt,
+      type: MessageType.user,
+      timestamp: DateTime.now(),
+    );
+    
+    setState(() {
+      _messages.add(userMessage);
+    });
+    
+    // Generate quiz prompt
+    final quizPrompt = '''
+Generate a quiz for: $prompt
+
+Create multiple-choice questions with 4 options each.
+Format as JSON array:
+[
+  {
+    "question": "Question text",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": 0,
+    "explanation": "Why this answer is correct"
+  }
+]
+
+Generate 5-10 questions. The correctAnswer is the index (0-3) of the correct option.
+''';
+    
+    // Stream AI response
+    String fullResponse = '';
+    final assistantMessage = QuizMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString() + '_quiz',
+      prompt: prompt,
+      questions: [],
+      timestamp: DateTime.now(),
+      isStreaming: true,
+    );
+    
+    setState(() {
+      _messages.add(assistantMessage);
+    });
+    
+    try {
+      final selectedModel = ModelService.instance.selectedModel;
+      final stream = await ApiService.sendMessage(
+        message: quizPrompt,
+        model: selectedModel,
+        conversationHistory: [],
+        systemPrompt: MessageModeService.instance.effectiveSystemPrompt,
+      );
+      
+      stream.listen(
+        (chunk) {
+          fullResponse += chunk;
+          
+          // Try to extract quiz questions as we stream
+          final questions = QuizService.extractQuizQuestions(fullResponse);
+          if (questions.isNotEmpty && mounted) {
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as QuizMessage).copyWith(
+                  questions: questions,
+                  isStreaming: true,
+                );
+              }
+            });
+          }
+        },
+        onDone: () {
+          if (mounted) {
+            // Final extraction
+            List<QuizQuestion> finalQuestions = QuizService.extractQuizQuestions(fullResponse);
+            
+            // If no questions found, generate samples
+            if (finalQuestions.isEmpty) {
+              finalQuestions = QuizService.generateSampleQuiz(prompt);
+            }
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as QuizMessage).copyWith(
+                  questions: finalQuestions,
+                  isStreaming: false,
+                );
+              }
+            });
+          }
+        },
+        onError: (error) {
+          if (mounted) {
+            // Generate sample quiz on error
+            final sampleQuestions = QuizService.generateSampleQuiz(prompt);
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as QuizMessage).copyWith(
+                  questions: sampleQuestions,
+                  isStreaming: false,
+                  hasError: false,
+                );
+              }
+            });
+          }
+        },
+      );
+    } catch (e) {
+      // Generate sample on exception
+      final sampleQuestions = QuizService.generateSampleQuiz(prompt);
+      
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+          if (index != -1) {
+            _messages[index] = (assistantMessage as QuizMessage).copyWith(
+              questions: sampleQuestions,
               isStreaming: false,
             );
           }
