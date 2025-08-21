@@ -906,14 +906,15 @@ Generate the Mermaid code now:''';
     _scrollToBottom();
 
     try {
-      final presentationPrompt = '''Create a professional presentation about: $prompt
+      final presentationPrompt = '''Create a comprehensive professional presentation about: $prompt
 
 Requirements:
-1. Generate a structured presentation with 5-10 slides
+1. Generate a well-structured presentation with as many slides as needed to cover the topic thoroughly
 2. Each slide should have a clear title and content
-3. Use bullet points where appropriate
-4. Include speaker notes if helpful
-5. Make it engaging and informative
+3. Use bullet points where appropriate for better readability
+4. Include speaker notes to provide additional context
+5. Make it engaging, informative, and comprehensive
+6. Cover all important aspects of the topic
 
 Format the response as follows:
 ---SLIDE 1---
@@ -922,12 +923,13 @@ Content: [Main content]
 Bullets:
 - Point 1
 - Point 2
+- Point 3
 Notes: [Speaker notes]
 
 ---SLIDE 2---
-[Continue same format]
+[Continue same format for all slides]
 
-Generate the presentation now:''';
+Generate the complete presentation now:''';
 
       final stream = await ApiService.sendMessage(
         message: presentationPrompt,

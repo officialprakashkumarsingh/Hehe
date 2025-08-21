@@ -44,10 +44,17 @@ class _PresentationPreviewState extends State<PresentationPreview> {
         ),
       );
       
-      final pdf = pw.Document();
+      final pdf = pw.Document(
+        theme: pw.ThemeData.withFont(
+          base: await PdfGoogleFonts.notoSansRegular(),
+          bold: await PdfGoogleFonts.notoSansBold(),
+          icons: await PdfGoogleFonts.notoColorEmoji(),
+        ),
+      );
       
       // Add slides to PDF
-      for (final slide in widget.slides) {
+      for (int index = 0; index < widget.slides.length; index++) {
+        final slide = widget.slides[index];
         pdf.addPage(
           pw.Page(
             pageFormat: PdfPageFormat.a4.landscape,
@@ -57,12 +64,13 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    // Title
+                    // Title with markdown support
                     pw.Text(
-                      slide.title,
+                      _cleanTextForPdf(slide.title),
                       style: pw.TextStyle(
                         fontSize: 32,
                         fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue900,
                       ),
                     ),
                     pw.SizedBox(height: 20),
@@ -73,10 +81,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           if (slide.content.isNotEmpty)
-                            pw.Text(
-                              slide.content,
-                              style: const pw.TextStyle(fontSize: 16),
-                            ),
+                            _buildPdfMarkdownContent(slide.content),
                           
                           if (slide.bulletPoints != null) ...[
                             pw.SizedBox(height: 20),
@@ -85,16 +90,55 @@ class _PresentationPreviewState extends State<PresentationPreview> {
                               child: pw.Row(
                                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                                 children: [
-                                  pw.Text('• ', style: const pw.TextStyle(fontSize: 16)),
+                                  pw.Text('• ', 
+                                    style: pw.TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.blue,
+                                    ),
+                                  ),
                                   pw.Expanded(
                                     child: pw.Text(
-                                      point,
+                                      _cleanTextForPdf(point),
                                       style: const pw.TextStyle(fontSize: 16),
                                     ),
                                   ),
                                 ],
                               ),
                             )),
+                          ],
+                          
+                          // Speaker notes
+                          if (slide.notes != null && slide.notes!.isNotEmpty) ...[
+                            pw.SizedBox(height: 20),
+                            pw.Container(
+                              padding: const pw.EdgeInsets.all(10),
+                              decoration: pw.BoxDecoration(
+                                color: PdfColors.grey100,
+                                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                              ),
+                              child: pw.Column(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Text(
+                                    'Speaker Notes:',
+                                    style: pw.TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.grey700,
+                                    ),
+                                  ),
+                                  pw.SizedBox(height: 5),
+                                  pw.Text(
+                                    _cleanTextForPdf(slide.notes!),
+                                    style: pw.TextStyle(
+                                      fontSize: 11,
+                                      color: PdfColors.grey800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ],
                       ),

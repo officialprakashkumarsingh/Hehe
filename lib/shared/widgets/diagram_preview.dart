@@ -95,7 +95,7 @@ class _DiagramPreviewState extends State<DiagramPreview> {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Exporting Ultra HD diagram...'),
+          content: const Text('Exporting diagram...'),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
@@ -103,15 +103,22 @@ class _DiagramPreviewState extends State<DiagramPreview> {
         ),
       );
       
-      // Generate high quality URL for export
-      final hdDiagramUrl = DiagramService.generateDiagramUrl(
+      // Generate URL for export - using SVG for better quality
+      final exportUrl = DiagramService.generateDiagramUrl(
         widget.mermaidCode, 
-        useFallback: false,
-        highQuality: true,
+        useFallback: true, // Use SVG for better quality
+        highQuality: false, // Avoid potential URL length issues
       );
       
-      // Download the high quality image
-      final response = await http.get(Uri.parse(hdDiagramUrl));
+      // Download the image with timeout and error handling
+      final response = await http.get(
+        Uri.parse(exportUrl),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Download timeout - please try again');
+        },
+      );
       
       if (response.statusCode == 200) {
         // Save to temporary file
