@@ -551,7 +551,7 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                     Expanded(
                       child: _CompactExtensionTile(
                         icon: Icons.photo_camera_outlined,
-                        title: 'Analyse Image',
+                        title: 'Analyze',
                         onTap: onImageUpload,
                       ),
                     ),
@@ -559,7 +559,7 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                     Expanded(
                       child: _CompactExtensionTile(
                         icon: Icons.auto_fix_high,
-                        title: 'Enhance Prompt',
+                        title: 'Enhance',
                         onTap: onEnhancePrompt,
                       ),
                     ),
@@ -567,7 +567,7 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                     Expanded(
                       child: _ExtensionTile(
                         icon: Icons.search_outlined,
-                        title: 'Web Search',
+                        title: 'Search',
                         subtitle: '',
                         isToggled: webSearchEnabled,
                         onTap: () => onWebSearchToggle(!webSearchEnabled),
@@ -676,12 +676,33 @@ class _ExtensionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(12),
-          child: Icon(
-            icon,
-            color: isToggled
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            size: 24,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: isToggled
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                size: 24,
+              ),
+              if (title.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: isToggled ? FontWeight.w600 : FontWeight.w500,
+                    color: isToggled
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
           ),
         ),
       ),
@@ -713,10 +734,27 @@ class _CompactExtensionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(12),
-          child: Icon(
-            icon,
-            size: 24,
-            color: Theme.of(context).colorScheme.primary,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ),
