@@ -176,7 +176,7 @@ class RobotPainter extends CustomPainter {
     
     canvas.drawLine(
       const Offset(0, 0),
-      const Offset(0, -headRadius * 0.3),
+      Offset(0, -headRadius * 0.3),
       antennaPaint,
     );
     
