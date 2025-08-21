@@ -14,6 +14,7 @@ class ChatInput extends StatefulWidget {
   final Function(String)? onGenerateImage;
   final Function(String)? onGenerateDiagram;
   final Function(String)? onGeneratePresentation;
+  final Function(String)? onGenerateChart;
   final Function(String, String)? onVisionAnalysis;
   final VoidCallback? onStopStreaming;
   final VoidCallback? onTemplateRequest;
@@ -28,6 +29,7 @@ class ChatInput extends StatefulWidget {
     this.onGenerateImage,
     this.onGenerateDiagram,
     this.onGeneratePresentation,
+    this.onGenerateChart,
     this.onVisionAnalysis,
     this.onStopStreaming,
     this.onTemplateRequest,
@@ -50,6 +52,7 @@ class _ChatInputState extends State<ChatInput> {
   bool _imageGenerationMode = false;
   bool _diagramGenerationMode = false;
   bool _presentationGenerationMode = false;
+  bool _chartGenerationMode = false;
   String? _pendingImageData;
   Timer? _typingTimer;
 
@@ -218,8 +221,10 @@ class _ChatInputState extends State<ChatInput> {
                                   : _diagramGenerationMode
                                       ? 'Describe the diagram you want to create...'
                                       : _presentationGenerationMode
-                                          ? 'Describe the presentation topic...' 
-                                          : 'Type your message...') 
+                                          ? 'Describe the presentation topic...'
+                                          : _chartGenerationMode
+                                              ? 'Describe the chart or graph you want...'
+                                              : 'Type your message...') 
                           : 'Select a model to start chatting',
                       hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
@@ -253,7 +258,7 @@ class _ChatInputState extends State<ChatInput> {
                             : Theme.of(context).colorScheme.outline.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(24),
                     child: InkWell(
-                      onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : (_diagramGenerationMode ? _handleDiagramGenerationDirect : (_presentationGenerationMode ? _handlePresentationGenerationDirect : _handleSend))) : null),
+                      onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : (_diagramGenerationMode ? _handleDiagramGenerationDirect : (_presentationGenerationMode ? _handlePresentationGenerationDirect : (_chartGenerationMode ? _handleChartGenerationDirect : _handleSend)))) : null),
                       borderRadius: BorderRadius.circular(24),
                       child: Container(
                         width: 48,
@@ -263,8 +268,9 @@ class _ChatInputState extends State<ChatInput> {
                               ? Icons.stop_rounded
                               : (_imageGenerationMode ? Icons.auto_awesome_outlined 
                                   : (_diagramGenerationMode ? Icons.account_tree_outlined
-                                      : (_presentationGenerationMode ? Icons.slideshow_outlined 
-                                          : Icons.arrow_upward_rounded))),
+                                      : (_presentationGenerationMode ? Icons.slideshow_outlined
+                                          : (_chartGenerationMode ? Icons.bar_chart_outlined 
+                                              : Icons.arrow_upward_rounded)))),
                           color: widget.isLoading
                               ? Colors.white
                               : (_canSend
@@ -327,6 +333,19 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
+  void _handleChartGenerationDirect() {
+    final prompt = _controller.text.trim();
+    if (prompt.isNotEmpty && widget.onGenerateChart != null) {
+      widget.onGenerateChart!(prompt);
+      _controller.clear();
+      setState(() {
+        _chartGenerationMode = false;
+      });
+      _updateSendButton();
+      HapticFeedback.lightImpact();
+    }
+  }
+
   void _showExtensionsSheet() {
     showModalBottomSheet(
       context: context,
@@ -337,6 +356,7 @@ class _ChatInputState extends State<ChatInput> {
         imageGenerationMode: _imageGenerationMode,
         diagramGenerationMode: _diagramGenerationMode,
         presentationGenerationMode: _presentationGenerationMode,
+        chartGenerationMode: _chartGenerationMode,
         onImageUpload: () async {
           Navigator.pop(context);
           await _handleImageUpload();
@@ -348,6 +368,7 @@ class _ChatInputState extends State<ChatInput> {
               _imageGenerationMode = false;
               _diagramGenerationMode = false;
               _presentationGenerationMode = false;
+              _chartGenerationMode = false;
             }
           });
           Navigator.pop(context);
@@ -359,6 +380,7 @@ class _ChatInputState extends State<ChatInput> {
               _webSearchEnabled = false;
               _diagramGenerationMode = false;
               _presentationGenerationMode = false;
+              _chartGenerationMode = false;
             }
           });
           Navigator.pop(context);
@@ -374,6 +396,7 @@ class _ChatInputState extends State<ChatInput> {
               _imageGenerationMode = false;
               _webSearchEnabled = false;
               _presentationGenerationMode = false;
+              _chartGenerationMode = false;
             }
           });
           Navigator.pop(context);
@@ -385,6 +408,19 @@ class _ChatInputState extends State<ChatInput> {
               _imageGenerationMode = false;
               _webSearchEnabled = false;
               _diagramGenerationMode = false;
+              _chartGenerationMode = false;
+            }
+          });
+          Navigator.pop(context);
+        },
+        onChartToggle: (enabled) {
+          setState(() {
+            _chartGenerationMode = enabled;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _webSearchEnabled = false;
+              _diagramGenerationMode = false;
+              _presentationGenerationMode = false;
             }
           });
           Navigator.pop(context);
@@ -451,11 +487,13 @@ class _ExtensionsBottomSheet extends StatelessWidget {
   final bool imageGenerationMode;
   final bool diagramGenerationMode;
   final bool presentationGenerationMode;
+  final bool chartGenerationMode;
   final VoidCallback onImageUpload;
   final Function(bool) onWebSearchToggle;
   final Function(bool) onImageModeToggle;
   final Function(bool) onDiagramToggle;
   final Function(bool) onPresentationToggle;
+  final Function(bool) onChartToggle;
   final VoidCallback onEnhancePrompt;
 
   const _ExtensionsBottomSheet({
@@ -463,11 +501,13 @@ class _ExtensionsBottomSheet extends StatelessWidget {
     required this.imageGenerationMode,
     this.diagramGenerationMode = false,
     this.presentationGenerationMode = false,
+    this.chartGenerationMode = false,
     required this.onImageUpload,
     required this.onWebSearchToggle,
     required this.onImageModeToggle,
     required this.onDiagramToggle,
     required this.onPresentationToggle,
+    required this.onChartToggle,
     required this.onEnhancePrompt,
   });
 
@@ -528,24 +568,12 @@ class _ExtensionsBottomSheet extends StatelessWidget {
             color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
           ),
           
-          // Options organized by category
+          // Options in grid layout
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            padding: const EdgeInsets.all(20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Input Enhancement Section
-                Text(
-                  'INPUT ENHANCEMENT',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
+                // First row
                 Row(
                   children: [
                     Expanded(
@@ -555,7 +583,7 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                         onTap: onImageUpload,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _CompactExtensionTile(
                         icon: Icons.auto_fix_high,
@@ -563,20 +591,17 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                         onTap: onEnhancePrompt,
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.search_outlined,
+                        title: 'Web Search',
+                        subtitle: '',
+                        isToggled: webSearchEnabled,
+                        onTap: () => onWebSearchToggle(!webSearchEnabled),
+                      ),
+                    ),
                   ],
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Generation Modes Section
-                Text(
-                  'GENERATION MODES',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                  ),
                 ),
                 const SizedBox(height: 12),
                 
@@ -629,6 +654,19 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                   compact: true,
                   onTap: () => onPresentationToggle(!presentationGenerationMode),
                 ),
+                
+                const SizedBox(height: 10),
+                
+                // Chart Generation
+                _ExtensionTile(
+                  icon: Icons.bar_chart_outlined,
+                  title: 'Chart Generation',
+                  subtitle: 'Interactive charts',
+                  isToggled: chartGenerationMode,
+                  iconSize: 20,
+                  compact: true,
+                  onTap: () => onChartToggle(!chartGenerationMode),
+                ),
               ],
             ),
           ),
@@ -670,57 +708,14 @@ class _ExtensionTile extends StatelessWidget {
           HapticFeedback.selectionClick();
         },
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: EdgeInsets.all(compact ? 12 : 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isToggled
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
-                      : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: iconSize,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isToggled
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (isToggled)
-                Icon(
-                  Icons.check_circle,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 24,
-                ),
-            ],
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          child: Icon(
+            icon,
+            color: isToggled
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            size: 24,
           ),
         ),
       ),
@@ -751,27 +746,11 @@ class _CompactExtensionTile extends StatelessWidget {
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 24,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-              ),
-            ],
+          padding: const EdgeInsets.all(12),
+          child: Icon(
+            icon,
+            size: 24,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       ),
