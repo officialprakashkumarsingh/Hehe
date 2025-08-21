@@ -493,15 +493,22 @@ Based on the above current information and search results, please provide a comp
           });
         }
         
-        // Scroll to bottom every 3 chunks
-        if (chunkCount % 3 == 0) {
+        // Smooth auto-scroll during streaming
+        if (chunkCount % 2 == 0) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_scrollController.hasClients) {
-              _scrollController.animateTo(
-                _scrollController.position.maxScrollExtent,
-                duration: const Duration(milliseconds: 100),
-                curve: Curves.easeOut,
-              );
+            // Only auto-scroll if user hasn't manually scrolled away
+            if (_autoScrollEnabled && _scrollController.hasClients && !_userIsScrolling) {
+              final maxScroll = _scrollController.position.maxScrollExtent;
+              final currentScroll = _scrollController.offset;
+              
+              // Smooth scroll to bottom if we're close (within 200 pixels)
+              if (maxScroll - currentScroll < 200) {
+                _scrollController.animateTo(
+                  maxScroll,
+                  duration: const Duration(milliseconds: 150),
+                  curve: Curves.linear,
+                );
+              }
             }
           });
         }

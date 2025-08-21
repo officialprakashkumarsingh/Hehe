@@ -319,8 +319,32 @@ class _ChatInputState extends State<ChatInput> {
           Navigator.pop(context);
           _showPromptEnhancer();
         },
+        onDiagramGeneration: () async {
+          Navigator.pop(context);
+          await _showDiagramGenerator();
+        },
       ),
     );
+  }
+
+  Future<void> _showDiagramGenerator() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => const DiagramGeneratorDialog(),
+    );
+    
+    if (result != null && result.isNotEmpty) {
+      // Insert the diagram code into the message
+      final currentText = _controller.text;
+      final newText = currentText.isEmpty 
+          ? '```mermaid\n$result\n```'
+          : '$currentText\n\n```mermaid\n$result\n```';
+      
+      _controller.text = newText;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: _controller.text.length),
+      );
+    }
   }
 
   Future<void> _handleImageUpload() async {
@@ -381,6 +405,7 @@ class _ExtensionsBottomSheet extends StatelessWidget {
   final Function(bool) onWebSearchToggle;
   final Function(bool) onImageModeToggle;
   final VoidCallback onEnhancePrompt;
+  final VoidCallback onDiagramGeneration;
 
   const _ExtensionsBottomSheet({
     required this.webSearchEnabled,
@@ -389,6 +414,7 @@ class _ExtensionsBottomSheet extends StatelessWidget {
     required this.onWebSearchToggle,
     required this.onImageModeToggle,
     required this.onEnhancePrompt,
+    required this.onDiagramGeneration,
   });
 
   @override
@@ -467,6 +493,17 @@ class _ExtensionsBottomSheet extends StatelessWidget {
                   isToggled: imageGenerationMode,
                   iconSize: 20,
                   onTap: () => onImageModeToggle(!imageGenerationMode),
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Diagram Generation
+                _ExtensionTile(
+                  icon: Icons.account_tree_outlined,
+                  title: 'Diagram Generation',
+                  subtitle: 'Create flowcharts, sequence diagrams, and more',
+                  iconSize: 20,
+                  onTap: onDiagramGeneration,
                 ),
               ],
             ),
