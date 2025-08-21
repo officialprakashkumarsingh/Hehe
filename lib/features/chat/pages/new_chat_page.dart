@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/services/template_service.dart';
 import '../../../core/models/template_model.dart';
 import '../../../shared/widgets/smooth_app_bar.dart';
+import '../../../shared/widgets/animated_robot.dart';
 import '../widgets/template_selector.dart';
 
 class NewChatPage extends StatefulWidget {
@@ -109,12 +110,11 @@ class _NewChatPageState extends State<NewChatPage>
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(25),
             ),
-            child: Icon(
-              Icons.chat_bubble_outline,
-              size: 50,
+            child: AnimatedRobot(
+              size: 80,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),

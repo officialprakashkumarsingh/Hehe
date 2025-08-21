@@ -123,10 +123,10 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                         children: [
                           TextSpan(
                             text: 'अहम्',
-                            style: GoogleFonts.notoSansDevanagari(
+                            style: GoogleFonts.poppins(
                               fontSize: 48,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: 0,
+                              letterSpacing: 1,
                               color: textColor,
                             ),
                           ),

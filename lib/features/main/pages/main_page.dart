@@ -75,10 +75,10 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
                       children: [
                         TextSpan(
                           text: 'अहम्',
-                          style: GoogleFonts.notoSansDevanagari(
+                          style: GoogleFonts.poppins(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 0,
+                            letterSpacing: 0.5,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),

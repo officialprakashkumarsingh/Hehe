@@ -56,6 +56,20 @@ class _MessageBubbleState extends State<MessageBubble>
     super.dispose();
   }
 
+  void _copyToClipboard() {
+    Clipboard.setData(ClipboardData(text: widget.message.content));
+    HapticFeedback.mediumImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Message copied to clipboard'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isUser = widget.message.type == MessageType.user;
@@ -67,6 +81,7 @@ class _MessageBubbleState extends State<MessageBubble>
         // Haptic feedback on tap
         HapticFeedback.lightImpact();
       },
+      onDoubleTap: isUser ? _copyToClipboard : null,
       child: Column(
         crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [

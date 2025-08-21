@@ -31,6 +31,8 @@ class _ChatPageState extends State<ChatPage> {
   bool _isLoading = false;
   bool _showTemplates = false;
   bool _showScrollToBottom = false;
+  bool _userIsScrolling = false;
+  bool _autoScrollEnabled = true;
   
   // For stopping streams
   Stream<String>? _currentStream;
@@ -48,6 +50,18 @@ class _ChatPageState extends State<ChatPage> {
     
     final isAtBottom = _scrollController.offset >= 
                      _scrollController.position.maxScrollExtent - 100;
+    
+    // Detect if user is manually scrolling
+    if (_scrollController.position.isScrollingNotifier.value) {
+      _userIsScrolling = true;
+      // Re-enable auto scroll if user scrolls to bottom
+      if (isAtBottom) {
+        _autoScrollEnabled = true;
+        _userIsScrolling = false;
+      } else {
+        _autoScrollEnabled = false;
+      }
+    }
     
     if (isAtBottom != !_showScrollToBottom) {
       setState(() {
