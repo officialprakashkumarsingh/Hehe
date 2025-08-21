@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/prompt_enhancer_service.dart';
 import '../../../shared/widgets/prompt_enhancer.dart';
+import 'diagram_generator_dialog.dart';
 
 class ChatInput extends StatefulWidget {
   final TextEditingController? controller;
