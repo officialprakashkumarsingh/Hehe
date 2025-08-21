@@ -76,7 +76,7 @@ class _PresentationPreviewState extends State<PresentationPreview> {
       // Load fonts with better emoji support
       final baseFont = await PdfGoogleFonts.notoSansRegular();
       final boldFont = await PdfGoogleFonts.notoSansBold();
-      final emojiFont = await PdfGoogleFonts.notoEmoji();
+      final emojiFont = await PdfGoogleFonts.notoColorEmoji();
       
       final pdf = pw.Document(
         theme: pw.ThemeData.withFont(
