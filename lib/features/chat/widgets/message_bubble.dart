@@ -183,6 +183,10 @@ class _MessageBubbleState extends State<MessageBubble>
                     // Don't show export here - it's already in the presentation preview
                   ] else if (widget.message is ChartMessage) ...[
                     // Don't show export here - it's already in the chart preview
+                  ] else if (widget.message is FlashcardMessage) ...[
+                    // Don't show export here - it's already in the flashcard preview
+                  ] else if (widget.message is QuizMessage) ...[
+                    // Don't show export here - it's already in the quiz preview
                   ] else ...[
                     // For text messages, show all options
                     // Copy - always visible for AI messages

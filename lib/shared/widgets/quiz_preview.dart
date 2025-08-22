@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../core/models/quiz_message_model.dart';
 
 class QuizPreview extends StatefulWidget {
@@ -92,7 +95,7 @@ class _QuizPreviewState extends State<QuizPreview> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Exporting quiz...'),
+            content: const Text('Exporting quiz as PDF...'),
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
@@ -100,55 +103,272 @@ class _QuizPreviewState extends State<QuizPreview> {
         );
       }
 
-      // Create text content
-      final buffer = StringBuffer();
-      buffer.writeln('Quiz: ${widget.title}');
-      buffer.writeln('=' * 40);
-      buffer.writeln();
+      // Get theme colors
+      final theme = Theme.of(context);
+      final isDarkMode = theme.brightness == Brightness.dark;
+      final primaryColor = theme.colorScheme.primary;
+      final surfaceColor = theme.colorScheme.surface;
+      final onSurfaceColor = theme.colorScheme.onSurface;
+      final successColor = Colors.green;
+      final errorColor = theme.colorScheme.error;
+      
+      // Convert Flutter colors to PDF colors
+      final pdfPrimaryColor = PdfColor(
+        primaryColor.red / 255,
+        primaryColor.green / 255,
+        primaryColor.blue / 255,
+      );
+      final pdfSurfaceColor = PdfColor(
+        surfaceColor.red / 255,
+        surfaceColor.green / 255,
+        surfaceColor.blue / 255,
+      );
+      final pdfTextColor = PdfColor(
+        onSurfaceColor.red / 255,
+        onSurfaceColor.green / 255,
+        onSurfaceColor.blue / 255,
+      );
+      final pdfSuccessColor = PdfColor(
+        successColor.red / 255,
+        successColor.green / 255,
+        successColor.blue / 255,
+      );
+      final pdfErrorColor = PdfColor(
+        errorColor.red / 255,
+        errorColor.green / 255,
+        errorColor.blue / 255,
+      );
+      final pdfBackgroundColor = isDarkMode 
+          ? PdfColor(0.1, 0.1, 0.1)
+          : PdfColor(1, 1, 1);
 
-      // Add results if quiz is completed
-      if (_userAnswers.isNotEmpty) {
-        buffer.writeln('Your Score: $_correctAnswers/${widget.questions.length}');
-        buffer.writeln('Percentage: ${(_correctAnswers / widget.questions.length * 100).toStringAsFixed(1)}%');
-        buffer.writeln();
-        buffer.writeln('-' * 40);
-        buffer.writeln();
-      }
+      // Create PDF document
+      final pdf = pw.Document(
+        theme: pw.ThemeData.withFont(
+          base: await PdfGoogleFonts.notoSansRegular(),
+          bold: await PdfGoogleFonts.notoSansBold(),
+          italic: await PdfGoogleFonts.notoSansItalic(),
+          boldItalic: await PdfGoogleFonts.notoSansBoldItalic(),
+          fontFallback: [await PdfGoogleFonts.notoColorEmoji()],
+        ),
+      );
 
-      for (int i = 0; i < widget.questions.length; i++) {
-        final question = widget.questions[i];
-        buffer.writeln('Question ${i + 1}: ${question.question}');
-        buffer.writeln();
-        
-        for (int j = 0; j < question.options.length; j++) {
-          final isCorrect = j == question.correctAnswer;
-          final isUserAnswer = _userAnswers[i] == j;
-          
-          buffer.write('  ${String.fromCharCode(65 + j)}. ${question.options[j]}');
-          if (isCorrect) buffer.write(' ✓ (Correct)');
-          if (isUserAnswer && _userAnswers.isNotEmpty) {
-            buffer.write(isCorrect ? ' - Your answer ✓' : ' - Your answer ✗');
-          }
-          buffer.writeln();
-        }
-        
-        if (question.explanation != null) {
-          buffer.writeln();
-          buffer.writeln('Explanation: ${question.explanation}');
-        }
-        
-        buffer.writeln();
-        buffer.writeln('-' * 30);
-        buffer.writeln();
-      }
+      // Add pages
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: pw.EdgeInsets.zero,
+          build: (context) => [
+            pw.Container(
+              color: pdfBackgroundColor,
+              padding: const pw.EdgeInsets.all(40),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(20),
+                    decoration: pw.BoxDecoration(
+                      color: pdfPrimaryColor.shade(isDarkMode ? 800 : 100),
+                      borderRadius: pw.BorderRadius.circular(12),
+                    ),
+                    child: pw.Center(
+                      child: pw.Text(
+                        'Quiz: ${widget.title}',
+                        style: pw.TextStyle(
+                          fontSize: 24,
+                          fontWeight: pw.FontWeight.bold,
+                          color: pdfTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Results if quiz is completed
+                  if (_userAnswers.isNotEmpty) ...[
+                    pw.SizedBox(height: 20),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.all(16),
+                      decoration: pw.BoxDecoration(
+                        color: pdfPrimaryColor.shade(isDarkMode ? 900 : 50),
+                        borderRadius: pw.BorderRadius.circular(8),
+                      ),
+                      child: pw.Column(
+                        children: [
+                          pw.Text(
+                            'Your Score: $_correctAnswers/${widget.questions.length}',
+                            style: pw.TextStyle(
+                              fontSize: 18,
+                              fontWeight: pw.FontWeight.bold,
+                              color: pdfTextColor,
+                            ),
+                          ),
+                          pw.SizedBox(height: 8),
+                          pw.Text(
+                            'Percentage: ${(_correctAnswers / widget.questions.length * 100).toStringAsFixed(1)}%',
+                            style: pw.TextStyle(
+                              fontSize: 16,
+                              color: pdfTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  
+                  pw.SizedBox(height: 30),
+                  
+                  // Questions
+                  ...widget.questions.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final question = entry.value;
+                    final userAnswer = index < _userAnswers.length ? _userAnswers[index] : null;
+                    
+                    return pw.Container(
+                      margin: const pw.EdgeInsets.only(bottom: 20),
+                      padding: const pw.EdgeInsets.all(20),
+                      decoration: pw.BoxDecoration(
+                        color: isDarkMode 
+                            ? pdfSurfaceColor.shade(700)
+                            : pdfSurfaceColor,
+                        borderRadius: pw.BorderRadius.circular(8),
+                        border: pw.Border.all(
+                          color: pdfPrimaryColor.shade(isDarkMode ? 600 : 300),
+                          width: 1,
+                        ),
+                      ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'Question ${index + 1}',
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: pdfPrimaryColor,
+                            ),
+                          ),
+                          pw.SizedBox(height: 8),
+                          pw.Text(
+                            question.question,
+                            style: pw.TextStyle(
+                              fontSize: 14,
+                              fontWeight: pw.FontWeight.bold,
+                              color: pdfTextColor,
+                            ),
+                          ),
+                          pw.SizedBox(height: 12),
+                          
+                          // Options
+                          ...question.options.asMap().entries.map((optEntry) {
+                            final optIndex = optEntry.key;
+                            final option = optEntry.value;
+                            final isCorrect = optIndex == question.correctAnswer;
+                            final isUserAnswer = userAnswer == optIndex;
+                            
+                            return pw.Container(
+                              margin: const pw.EdgeInsets.only(bottom: 8),
+                              padding: const pw.EdgeInsets.all(10),
+                              decoration: pw.BoxDecoration(
+                                color: userAnswer != null
+                                    ? (isCorrect
+                                        ? pdfSuccessColor.shade(isDarkMode ? 900 : 50)
+                                        : (isUserAnswer
+                                            ? pdfErrorColor.shade(isDarkMode ? 900 : 50)
+                                            : null))
+                                    : null,
+                                borderRadius: pw.BorderRadius.circular(4),
+                                border: pw.Border.all(
+                                  color: userAnswer != null
+                                      ? (isCorrect
+                                          ? pdfSuccessColor
+                                          : (isUserAnswer ? pdfErrorColor : pdfTextColor.shade(300)))
+                                      : pdfTextColor.shade(300),
+                                  width: 1,
+                                ),
+                              ),
+                              child: pw.Row(
+                                children: [
+                                  pw.Text(
+                                    '${String.fromCharCode(65 + optIndex)}. ',
+                                    style: pw.TextStyle(
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: pdfTextColor,
+                                    ),
+                                  ),
+                                  pw.Expanded(
+                                    child: pw.Text(
+                                      option,
+                                      style: pw.TextStyle(color: pdfTextColor),
+                                    ),
+                                  ),
+                                  if (isCorrect)
+                                    pw.Text(
+                                      ' ✓',
+                                      style: pw.TextStyle(
+                                        color: pdfSuccessColor,
+                                        fontWeight: pw.FontWeight.bold,
+                                      ),
+                                    ),
+                                  if (isUserAnswer && !isCorrect)
+                                    pw.Text(
+                                      ' ✗',
+                                      style: pw.TextStyle(
+                                        color: pdfErrorColor,
+                                        fontWeight: pw.FontWeight.bold,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          
+                          if (question.explanation != null) ...[
+                            pw.SizedBox(height: 12),
+                            pw.Container(
+                              padding: const pw.EdgeInsets.all(10),
+                              decoration: pw.BoxDecoration(
+                                color: pdfPrimaryColor.shade(isDarkMode ? 900 : 50),
+                                borderRadius: pw.BorderRadius.circular(4),
+                              ),
+                              child: pw.Row(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Text(
+                                    '💡 ',
+                                    style: pw.TextStyle(fontSize: 12),
+                                  ),
+                                  pw.Expanded(
+                                    child: pw.Text(
+                                      question.explanation!,
+                                      style: pw.TextStyle(
+                                        fontSize: 11,
+                                        fontStyle: pw.FontStyle.italic,
+                                        color: pdfTextColor.shade(isDarkMode ? 200 : 700),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 
-      // Save to file
+      // Save and share PDF
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final file = File('${tempDir.path}/quiz_$timestamp.txt');
-      await file.writeAsString(buffer.toString());
+      final file = File('${tempDir.path}/quiz_$timestamp.pdf');
+      await file.writeAsBytes(await pdf.save());
 
-      // Share the file
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Quiz: ${widget.title}',
@@ -162,7 +382,7 @@ class _QuizPreviewState extends State<QuizPreview> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Quiz exported successfully!'),
+            content: const Text('Quiz exported as PDF!'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
@@ -277,9 +497,24 @@ class _QuizPreviewState extends State<QuizPreview> {
 
           // Question
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+            child: GestureDetector(
+              onHorizontalDragEnd: (details) {
+                // Swipe left to go to next question
+                if (details.primaryVelocity! < -100) {
+                  if (_currentQuestionIndex < widget.questions.length - 1) {
+                    _nextQuestion();
+                  }
+                }
+                // Swipe right to go to previous question
+                else if (details.primaryVelocity! > 100) {
+                  if (_currentQuestionIndex > 0) {
+                    _previousQuestion();
+                  }
+                }
+              },
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
@@ -419,6 +654,7 @@ class _QuizPreviewState extends State<QuizPreview> {
               ),
             ),
           ),
+        ),
 
           // Action buttons
           Container(
