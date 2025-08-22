@@ -29,6 +29,8 @@ class MessageBubble extends StatefulWidget {
   final VoidCallback? onRegenerate;
   final VoidCallback? onExport;
   final String? modelName;
+  final String? userMessage;
+  final String? aiModel;
 
   const MessageBubble({
     super.key,
@@ -37,6 +39,8 @@ class MessageBubble extends StatefulWidget {
     this.onRegenerate,
     this.onExport,
     this.modelName,
+    this.userMessage,
+    this.aiModel,
   });
 
   @override
@@ -92,7 +96,7 @@ class _MessageBubbleState extends State<MessageBubble>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Exporting message as image...'),
+            content: const Text('Preparing conversation export...'),
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
@@ -100,12 +104,63 @@ class _MessageBubbleState extends State<MessageBubble>
         );
       }
 
-      // Capture the widget as image
-      RenderRepaintBoundary? boundary = _repaintBoundaryKey.currentContext
-          ?.findRenderObject() as RenderRepaintBoundary?;
+      // Get the user message and AI model info
+      final userMessage = widget.userMessage ?? '';
+      final aiModel = widget.aiModel ?? 'AI Assistant';
+      final timestamp = widget.message.timestamp;
+      
+      // Create a custom widget for export with all context
+      final exportWidget = await showDialog<Widget>(
+        context: context,
+        barrierColor: Colors.transparent,
+        builder: (context) => Stack(
+          children: [
+            Positioned(
+              left: -1000,
+              child: Material(
+                child: Container(
+                  width: 800,
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: RepaintBoundary(
+                    key: GlobalKey(),
+                    child: _ExportMessageWidget(
+                      userMessage: userMessage,
+                      aiMessage: widget.message,
+                      aiModel: aiModel,
+                      timestamp: timestamp,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      // Wait for the widget to render
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Find and capture the export widget
+      final RenderRepaintBoundary? boundary = 
+          (exportWidget as RepaintBoundary?)?.key?.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       
       if (boundary == null) {
-        throw Exception('Unable to capture message');
+        // Fallback to original message capture
+        final originalBoundary = _repaintBoundaryKey.currentContext
+            ?.findRenderObject() as RenderRepaintBoundary?;
+        
+        if (originalBoundary == null) {
+          throw Exception('Unable to capture message');
+        }
+        
+        final image = await originalBoundary.toImage(pixelRatio: 3.0);
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData == null) throw Exception('Unable to convert to image');
+        
+        final pngBytes = byteData.buffer.asUint8List();
+        Navigator.of(context).pop();
+        await _shareImage(pngBytes);
+        return;
       }
 
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
@@ -116,37 +171,9 @@ class _MessageBubbleState extends State<MessageBubble>
       }
 
       Uint8List pngBytes = byteData.buffer.asUint8List();
-
-      // Save to temporary file
-      final tempDir = await getTemporaryDirectory();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final file = File('${tempDir.path}/message_$timestamp.png');
-      await file.writeAsBytes(pngBytes);
-
-      // Share the image
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Message from AhamAI',
-      );
-
-      // Clean up after delay
-      Future.delayed(const Duration(seconds: 10), () {
-        if (file.existsSync()) {
-          file.deleteSync();
-        }
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Message exported as image!'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
-          ),
-        );
-      }
+      Navigator.of(context).pop();
+      
+      await _shareImage(pngBytes);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -159,6 +186,39 @@ class _MessageBubbleState extends State<MessageBubble>
           ),
         );
       }
+    }
+  }
+  
+  Future<void> _shareImage(Uint8List pngBytes) async {
+    // Save to temporary file
+    final tempDir = await getTemporaryDirectory();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final file = File('${tempDir.path}/message_$timestamp.png');
+    await file.writeAsBytes(pngBytes);
+
+    // Share the image
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      text: 'Conversation from AhamAI',
+    );
+
+    // Clean up after delay
+    Future.delayed(const Duration(seconds: 10), () {
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Conversation exported as image!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+        ),
+      );
     }
   }
 
@@ -836,3 +896,166 @@ class _ActionButton extends StatelessWidget {
 
 }
 
+class _ExportMessageWidget extends StatelessWidget {
+  final String userMessage;
+  final Message aiMessage;
+  final String aiModel;
+  final DateTime timestamp;
+  
+  const _ExportMessageWidget({
+    required this.userMessage,
+    required this.aiMessage,
+    required this.aiModel,
+    required this.timestamp,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dateFormat = '${timestamp.day}/${timestamp.month}/${timestamp.year} ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+    
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with app name and timestamp
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'AhamAI',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      aiModel,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      dateFormat,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // User message
+          if (userMessage.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person_outline,
+                        size: 18,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'You',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    userMessage,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          
+          // AI response
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      aiModel,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                MarkdownMessage(
+                  content: aiMessage.content,
+                  isUser: false,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
