@@ -143,13 +143,16 @@ class _FlashcardPreviewState extends State<FlashcardPreview>
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(40),
-          decoration: pw.BoxDecoration(
-            color: pdfBackgroundColor,
-          ),
+          margin: pw.EdgeInsets.zero,
           build: (context) => [
-            // Title
             pw.Container(
+              color: pdfBackgroundColor,
+              padding: const pw.EdgeInsets.all(40),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  pw.Container(
                     padding: const pw.EdgeInsets.all(20),
                     decoration: pw.BoxDecoration(
                       color: pdfPrimaryColor.shade(isDarkMode ? 800 : 100),
@@ -163,13 +166,13 @@ class _FlashcardPreviewState extends State<FlashcardPreview>
                           fontWeight: pw.FontWeight.bold,
                           color: pdfTextColor,
                         ),
-                      ),
+                                            ),
                     ),
-            ),
-            pw.SizedBox(height: 30),
-            
-            // Cards
-            ...widget.flashcards.asMap().entries.map((entry) {
+                  ),
+                  pw.SizedBox(height: 30),
+                  
+                  // Cards
+                  ...widget.flashcards.asMap().entries.map((entry) {
                     final index = entry.key;
                     final card = entry.value;
                     return pw.Container(
@@ -270,6 +273,9 @@ class _FlashcardPreviewState extends State<FlashcardPreview>
                       ),
                     );
                   }).toList(),
+                ],
+              ),
+            ),
           ],
         ),
       );

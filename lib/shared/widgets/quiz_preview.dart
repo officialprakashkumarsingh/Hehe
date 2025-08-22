@@ -157,13 +157,16 @@ class _QuizPreviewState extends State<QuizPreview> {
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(40),
-          decoration: pw.BoxDecoration(
-            color: pdfBackgroundColor,
-          ),
+          margin: pw.EdgeInsets.zero,
           build: (context) => [
-            // Title
             pw.Container(
+              color: pdfBackgroundColor,
+              padding: const pw.EdgeInsets.all(40),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  pw.Container(
                     padding: const pw.EdgeInsets.all(20),
                     decoration: pw.BoxDecoration(
                       color: pdfPrimaryColor.shade(isDarkMode ? 800 : 100),
@@ -177,12 +180,12 @@ class _QuizPreviewState extends State<QuizPreview> {
                           fontWeight: pw.FontWeight.bold,
                           color: pdfTextColor,
                         ),
-                      ),
+                                            ),
                     ),
-            ),
-            
-            // Results if quiz is completed
-            if (_userAnswers.isNotEmpty) ...[
+                  ),
+                  
+                  // Results if quiz is completed
+                  if (_userAnswers.isNotEmpty) ...[
                     pw.SizedBox(height: 20),
                     pw.Container(
                       padding: const pw.EdgeInsets.all(16),
@@ -209,14 +212,14 @@ class _QuizPreviewState extends State<QuizPreview> {
                             ),
                           ),
                         ],
-                      ),
+                                            ),
                     ),
-            ],
-            
-            pw.SizedBox(height: 30),
-            
-            // Questions
-            ...widget.questions.asMap().entries.map((entry) {
+                  ],
+                  
+                  pw.SizedBox(height: 30),
+                  
+                  // Questions
+                  ...widget.questions.asMap().entries.map((entry) {
                     final index = entry.key;
                     final question = entry.value;
                     final userAnswer = index < _userAnswers.length ? _userAnswers[index] : null;
@@ -356,6 +359,9 @@ class _QuizPreviewState extends State<QuizPreview> {
                       ),
                     );
                   }).toList(),
+                ],
+              ),
+            ),
           ],
         ),
       );
