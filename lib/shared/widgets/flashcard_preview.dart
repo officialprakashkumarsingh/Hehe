@@ -143,16 +143,13 @@ class _FlashcardPreviewState extends State<FlashcardPreview>
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.zero,
+          margin: const pw.EdgeInsets.all(40),
+          decoration: pw.BoxDecoration(
+            color: pdfBackgroundColor,
+          ),
           build: (context) => [
+            // Title
             pw.Container(
-              color: pdfBackgroundColor,
-              padding: const pw.EdgeInsets.all(40),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  pw.Container(
                     padding: const pw.EdgeInsets.all(20),
                     decoration: pw.BoxDecoration(
                       color: pdfPrimaryColor.shade(isDarkMode ? 800 : 100),
@@ -168,11 +165,11 @@ class _FlashcardPreviewState extends State<FlashcardPreview>
                         ),
                       ),
                     ),
-                  ),
-                  pw.SizedBox(height: 30),
-                  
-                  // Cards
-                  ...widget.flashcards.asMap().entries.map((entry) {
+            ),
+            pw.SizedBox(height: 30),
+            
+            // Cards
+            ...widget.flashcards.asMap().entries.map((entry) {
                     final index = entry.key;
                     final card = entry.value;
                     return pw.Container(
@@ -249,8 +246,11 @@ class _FlashcardPreviewState extends State<FlashcardPreview>
                                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                                 children: [
                                   pw.Text(
-                                    '💡 ',
-                                    style: pw.TextStyle(fontSize: 12),
+                                    'ℹ️ ',
+                                    style: pw.TextStyle(
+                                      fontSize: 12,
+                                      color: pdfTextColor,
+                                    ),
                                   ),
                                   pw.Expanded(
                                     child: pw.Text(
@@ -258,7 +258,7 @@ class _FlashcardPreviewState extends State<FlashcardPreview>
                                       style: pw.TextStyle(
                                         fontSize: 11,
                                         fontStyle: pw.FontStyle.italic,
-                                        color: pdfTextColor.shade(isDarkMode ? 200 : 700),
+                                        color: pdfTextColor,
                                       ),
                                     ),
                                   ),
@@ -270,9 +270,6 @@ class _FlashcardPreviewState extends State<FlashcardPreview>
                       ),
                     );
                   }).toList(),
-                ],
-              ),
-            ),
           ],
         ),
       );

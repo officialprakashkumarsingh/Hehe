@@ -301,9 +301,7 @@ class _ChatInputState extends State<ChatInput> {
     if (prompt.isNotEmpty && widget.onGenerateImage != null) {
       widget.onGenerateImage!(prompt);
       _controller.clear();
-      setState(() {
-        _imageGenerationMode = false;
-      });
+      // Keep mode active - user must manually turn it off
       _updateSendButton();
       HapticFeedback.lightImpact();
     }
@@ -314,9 +312,7 @@ class _ChatInputState extends State<ChatInput> {
     if (prompt.isNotEmpty && widget.onGenerateDiagram != null) {
       widget.onGenerateDiagram!(prompt);
       _controller.clear();
-      setState(() {
-        _diagramGenerationMode = false;
-      });
+      // Keep mode active - user must manually turn it off
       _updateSendButton();
       HapticFeedback.lightImpact();
     }
@@ -327,9 +323,7 @@ class _ChatInputState extends State<ChatInput> {
     if (prompt.isNotEmpty && widget.onGeneratePresentation != null) {
       widget.onGeneratePresentation!(prompt);
       _controller.clear();
-      setState(() {
-        _presentationGenerationMode = false;
-      });
+      // Keep mode active - user must manually turn it off
       _updateSendButton();
       HapticFeedback.lightImpact();
     }
@@ -340,9 +334,7 @@ class _ChatInputState extends State<ChatInput> {
     if (prompt.isNotEmpty && widget.onGenerateChart != null) {
       widget.onGenerateChart!(prompt);
       _controller.clear();
-      setState(() {
-        _chartGenerationMode = false;
-      });
+      // Keep mode active - user must manually turn it off
       _updateSendButton();
       HapticFeedback.lightImpact();
     }
@@ -353,9 +345,7 @@ class _ChatInputState extends State<ChatInput> {
     if (prompt.isNotEmpty && widget.onGenerateFlashcards != null) {
       widget.onGenerateFlashcards!(prompt);
       _controller.clear();
-      setState(() {
-        _flashcardGenerationMode = false;
-      });
+      // Keep mode active - user must manually turn it off
       _updateSendButton();
       HapticFeedback.lightImpact();
     }
@@ -366,9 +356,7 @@ class _ChatInputState extends State<ChatInput> {
     if (prompt.isNotEmpty && widget.onGenerateQuiz != null) {
       widget.onGenerateQuiz!(prompt);
       _controller.clear();
-      setState(() {
-        _quizGenerationMode = false;
-      });
+      // Keep mode active - user must manually turn it off
       _updateSendButton();
       HapticFeedback.lightImpact();
     }
