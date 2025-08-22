@@ -86,6 +86,82 @@ class _MessageBubbleState extends State<MessageBubble>
     );
   }
 
+  Future<void> _exportTextAsImage() async {
+    try {
+      // Show exporting notification
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Exporting message as image...'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+          ),
+        );
+      }
+
+      // Capture the widget as image
+      RenderRepaintBoundary? boundary = _repaintBoundaryKey.currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
+      
+      if (boundary == null) {
+        throw Exception('Unable to capture message');
+      }
+
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      
+      if (byteData == null) {
+        throw Exception('Unable to convert to image');
+      }
+
+      Uint8List pngBytes = byteData.buffer.asUint8List();
+
+      // Save to temporary file
+      final tempDir = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final file = File('${tempDir.path}/message_$timestamp.png');
+      await file.writeAsBytes(pngBytes);
+
+      // Share the image
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Message from AhamAI',
+      );
+
+      // Clean up after delay
+      Future.delayed(const Duration(seconds: 10), () {
+        if (file.existsSync()) {
+          file.deleteSync();
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Message exported as image!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isUser = widget.message.type == MessageType.user;
@@ -102,10 +178,12 @@ class _MessageBubbleState extends State<MessageBubble>
         crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           // Message content
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.9,
-            ),
+          RepaintBoundary(
+            key: _repaintBoundaryKey,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.9,
+              ),
             padding: isUser 
                 ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
                 : const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
@@ -167,6 +245,7 @@ class _MessageBubbleState extends State<MessageBubble>
               ],
             ),
           ),
+        ),
 
           // Actions - Show different actions based on message type
           if (!isUser && !isStreaming && !hasError)
@@ -195,12 +274,12 @@ class _MessageBubbleState extends State<MessageBubble>
                     // Don't show export here - it's already in the quiz preview
                   ] else ...[
                     // For text messages, show all options
-                    // Export as image - always visible for AI messages
-                    if (widget.onExport != null)
+                    // Copy - always visible for AI messages
+                    if (widget.onCopy != null)
                       _ActionButton(
-                        icon: Icons.image_outlined,
-                        label: 'Export',
-                        onPressed: () => _exportTextAsImage(),
+                        icon: Icons.content_copy_outlined,
+                        label: 'Copy',
+                        onPressed: widget.onCopy!,
                       ),
                     
                     // Regenerate - always visible for AI messages
@@ -213,14 +292,14 @@ class _MessageBubbleState extends State<MessageBubble>
                       ),
                     ],
                     
-                    // Export - always visible for AI messages
+                    // Export as Image - always visible for AI messages
                     if (widget.onExport != null) ...[
                       if (widget.onCopy != null || widget.onRegenerate != null) 
                         const SizedBox(width: 8),
                       _ActionButton(
-                        icon: Icons.download_outlined,
+                        icon: Icons.image_outlined,
                         label: 'Export',
-                        onPressed: widget.onExport!,
+                        onPressed: () => _exportTextAsImage(),
                       ),
                     ],
                   ],
