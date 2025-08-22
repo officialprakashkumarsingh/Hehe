@@ -197,15 +197,42 @@ class _ChatInputState extends State<ChatInput> {
           child: SafeArea(
             child: Row(
               children: [
-                // Extensions button
-                IconButton(
-                  onPressed: _showExtensionsSheet,
-                  icon: Icon(
-                    Icons.extension_outlined,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                    size: 24,
-                  ),
-                  tooltip: 'Extensions',
+                // Extensions button with close option
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: _showExtensionsSheet,
+                      icon: Icon(
+                        Icons.extension_outlined,
+                        color: _isAnyExtensionActive() 
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        size: 24,
+                      ),
+                      tooltip: 'Extensions',
+                    ),
+                    if (_isAnyExtensionActive())
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: _clearAllExtensions,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 10,
+                              color: Theme.of(context).colorScheme.onError,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 
                 // Text input - no background
@@ -535,6 +562,29 @@ class _ChatInputState extends State<ChatInput> {
         ),
       );
     }
+  }
+
+  bool _isAnyExtensionActive() {
+    return _imageGenerationMode || 
+           _diagramGenerationMode || 
+           _presentationGenerationMode || 
+           _chartGenerationMode || 
+           _flashcardGenerationMode || 
+           _quizGenerationMode ||
+           _webSearchEnabled;
+  }
+  
+  void _clearAllExtensions() {
+    setState(() {
+      _imageGenerationMode = false;
+      _diagramGenerationMode = false;
+      _presentationGenerationMode = false;
+      _chartGenerationMode = false;
+      _flashcardGenerationMode = false;
+      _quizGenerationMode = false;
+      _webSearchEnabled = false;
+    });
+    _updateSendButton();
   }
 
   IconData _getButtonIcon() {

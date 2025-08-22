@@ -1,6 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/models/message_model.dart';
 import '../../../core/models/image_message_model.dart';
@@ -43,6 +48,7 @@ class _MessageBubbleState extends State<MessageBubble>
   bool _showActions = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  final GlobalKey _repaintBoundaryKey = GlobalKey();
 
   @override
   void initState() {
@@ -189,12 +195,12 @@ class _MessageBubbleState extends State<MessageBubble>
                     // Don't show export here - it's already in the quiz preview
                   ] else ...[
                     // For text messages, show all options
-                    // Copy - always visible for AI messages
-                    if (widget.onCopy != null)
+                    // Export as image - always visible for AI messages
+                    if (widget.onExport != null)
                       _ActionButton(
-                        icon: Icons.content_copy_outlined,
-                        label: 'Copy',
-                        onPressed: widget.onCopy!,
+                        icon: Icons.image_outlined,
+                        label: 'Export',
+                        onPressed: () => _exportTextAsImage(),
                       ),
                     
                     // Regenerate - always visible for AI messages

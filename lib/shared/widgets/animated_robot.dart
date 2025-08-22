@@ -148,7 +148,7 @@ class RobotPainter extends CustomPainter {
     
     canvas.drawCircle(center, size.width / 2, bgPaint);
     
-    // Robot head (rounded rectangle)
+    // Robot head (rounded rectangle with gradient effect)
     final headPaint = Paint()
       ..color = primaryColor
       ..style = PaintingStyle.fill;
@@ -162,6 +162,20 @@ class RobotPainter extends CustomPainter {
       Radius.circular(headRadius * 0.3),
     );
     canvas.drawRRect(headRect, headPaint);
+    
+    // Add subtle gradient overlay for depth
+    final gradientPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withOpacity(0.1),
+          Colors.transparent,
+          Colors.black.withOpacity(0.1),
+        ],
+      ).createShader(headRect.outerRect)
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(headRect, gradientPaint);
     
     // Antenna
     canvas.save();
@@ -250,57 +264,75 @@ class RobotPainter extends CustomPainter {
       sparklePaint,
     );
     
-    // Nose
+    // Nose (more prominent and stylized)
     final nosePaint = Paint()
-      ..color = primaryColor.withOpacity(0.3)
-      ..style = PaintingStyle.fill;
-    
-    final noseY = center.dy + headRadius * 0.05;
-    final nosePath = Path();
-    nosePath.moveTo(center.dx, noseY - headRadius * 0.08);
-    nosePath.lineTo(center.dx - headRadius * 0.08, noseY + headRadius * 0.05);
-    nosePath.quadraticBezierTo(
-      center.dx,
-      noseY + headRadius * 0.08,
-      center.dx + headRadius * 0.08,
-      noseY + headRadius * 0.05,
-    );
-    nosePath.close();
-    
-    canvas.drawPath(nosePath, nosePaint);
-    
-    // Mouth (curved line with fill)
-    final mouthPaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.fill;
-    
-    final mouthStrokePaint = Paint()
       ..color = primaryColor.withOpacity(0.4)
+      ..style = PaintingStyle.fill;
+    
+    final noseOutlinePaint = Paint()
+      ..color = primaryColor.withOpacity(0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
     
+    final noseY = center.dy + headRadius * 0.05;
+    final nosePath = Path();
+    nosePath.moveTo(center.dx, noseY - headRadius * 0.1);
+    nosePath.lineTo(center.dx - headRadius * 0.1, noseY + headRadius * 0.06);
+    nosePath.quadraticBezierTo(
+      center.dx,
+      noseY + headRadius * 0.1,
+      center.dx + headRadius * 0.1,
+      noseY + headRadius * 0.06,
+    );
+    nosePath.close();
+    
+    canvas.drawPath(nosePath, nosePaint);
+    canvas.drawPath(nosePath, noseOutlinePaint);
+    
+    // Mouth (more expressive smile)
+    final mouthPaint = Paint()
+      ..color = primaryColor.withOpacity(0.2)
+      ..style = PaintingStyle.fill;
+    
+    final mouthStrokePaint = Paint()
+      ..color = primaryColor.withOpacity(0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    
     final mouthY = center.dy + headRadius * 0.35;
     final mouthPath = Path();
-    mouthPath.moveTo(center.dx - headRadius * 0.3, mouthY);
+    mouthPath.moveTo(center.dx - headRadius * 0.35, mouthY);
     mouthPath.quadraticBezierTo(
       center.dx,
-      mouthY + headRadius * 0.2,
-      center.dx + headRadius * 0.3,
+      mouthY + headRadius * 0.25,
+      center.dx + headRadius * 0.35,
       mouthY,
     );
-    mouthPath.quadraticBezierTo(
-      center.dx,
-      mouthY + headRadius * 0.1,
-      center.dx - headRadius * 0.3,
-      mouthY,
-    );
-    mouthPath.close();
     
-    // Draw mouth fill
-    canvas.drawPath(mouthPath, mouthPaint);
-    // Draw mouth outline
+    // Draw mouth outline (smile)
     canvas.drawPath(mouthPath, mouthStrokePaint);
+    
+    // Add teeth/tongue effect
+    final teethPaint = Paint()
+      ..color = Colors.white.withOpacity(0.8)
+      ..style = PaintingStyle.fill;
+    
+    // Draw small teeth
+    for (int i = -1; i <= 1; i++) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(center.dx + i * headRadius * 0.15, mouthY + headRadius * 0.05),
+            width: headRadius * 0.08,
+            height: headRadius * 0.06,
+          ),
+          Radius.circular(2),
+        ),
+        teethPaint,
+      );
+    }
     
     // Body indicator dots
     final dotPaint = Paint()
