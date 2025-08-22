@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/services/app_service.dart';
 import 'core/services/model_service.dart';
 import 'theme/providers/theme_provider.dart';
-import 'features/main/pages/main_page.dart';
+import 'features/splash/pages/splash_page.dart';
 import 'utils/app_scroll_behavior.dart';
 
 void main() async {
@@ -51,7 +51,7 @@ class AhamAIApp extends StatelessWidget {
               );
             },
             
-            home: const MainPage(),
+            home: const SplashPage(),
           );
         },
       ),

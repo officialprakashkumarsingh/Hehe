@@ -12,6 +12,17 @@ import '../../../core/services/export_service.dart';
 import '../../../core/services/vision_service.dart';
 import '../../../core/models/image_message_model.dart';
 import '../../../core/models/vision_message_model.dart';
+import '../../../core/models/diagram_message_model.dart';
+import '../../../core/models/presentation_message_model.dart';
+import '../../../core/models/chart_message_model.dart';
+import '../../../core/models/flashcard_message_model.dart';
+import '../../../core/models/quiz_message_model.dart';
+import '../../../core/services/diagram_service.dart';
+import '../../../core/services/chart_service.dart';
+import '../../../core/services/flashcard_service.dart';
+import '../../../core/services/quiz_service.dart';
+import '../../../shared/widgets/animated_robot.dart';
+import '../../../shared/widgets/presentation_preview.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/template_selector.dart';
@@ -31,6 +42,8 @@ class _ChatPageState extends State<ChatPage> {
   bool _isLoading = false;
   bool _showTemplates = false;
   bool _showScrollToBottom = false;
+  bool _userIsScrolling = false;
+  bool _autoScrollEnabled = true;
   
   // For stopping streams
   Stream<String>? _currentStream;
@@ -48,6 +61,18 @@ class _ChatPageState extends State<ChatPage> {
     
     final isAtBottom = _scrollController.offset >= 
                      _scrollController.position.maxScrollExtent - 100;
+    
+    // Detect if user is manually scrolling
+    if (_scrollController.position.isScrollingNotifier.value) {
+      _userIsScrolling = true;
+      // Re-enable auto scroll if user scrolls to bottom
+      if (isAtBottom) {
+        _autoScrollEnabled = true;
+        _userIsScrolling = false;
+      } else {
+        _autoScrollEnabled = false;
+      }
+    }
     
     if (isAtBottom != !_showScrollToBottom) {
       setState(() {
@@ -90,6 +115,11 @@ class _ChatPageState extends State<ChatPage> {
               selectedModel: modelService.selectedModel,
               onSendMessage: _handleSendMessage,
               onGenerateImage: _handleImageGeneration,
+              onGenerateDiagram: _handleDiagramGeneration,
+              onGeneratePresentation: _handlePresentationGeneration,
+              onGenerateChart: _handleChartGeneration,
+              onGenerateFlashcards: _handleFlashcardGeneration,
+              onGenerateQuiz: _handleQuizGeneration,
               onVisionAnalysis: _handleVisionAnalysis,
               onStopStreaming: _stopStreaming,
               onTemplateRequest: () {
@@ -140,20 +170,67 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildEmptyState() {
+    String greeting = '';
+    final hour = DateTime.now().hour;
+    
+    if (hour >= 5 && hour < 12) {
+      greeting = 'Good morning! ☀️';
+    } else if (hour >= 12 && hour < 17) {
+      greeting = 'Good afternoon! 🌤️';
+    } else if (hour >= 17 && hour < 21) {
+      greeting = 'Good evening! 🌅';
+    } else {
+      greeting = 'Good night! 🌙';
+    }
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Greeting bubble
           Container(
-            width: 80,
-            height: 80,
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              ),
             ),
-            child: Icon(
-              Icons.chat_bubble_outline,
-              size: 40,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  greeting,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Ready to help you!',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Robot
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: AnimatedRobot(
+              size: 80,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
@@ -479,15 +556,22 @@ Based on the above current information and search results, please provide a comp
           });
         }
         
-        // Scroll to bottom every 3 chunks
-        if (chunkCount % 3 == 0) {
+        // Smooth auto-scroll during streaming
+        if (chunkCount % 2 == 0) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_scrollController.hasClients) {
-              _scrollController.animateTo(
-                _scrollController.position.maxScrollExtent,
-                duration: const Duration(milliseconds: 100),
-                curve: Curves.easeOut,
-              );
+            // Only auto-scroll if user hasn't manually scrolled away
+            if (_autoScrollEnabled && _scrollController.hasClients && !_userIsScrolling) {
+              final maxScroll = _scrollController.position.maxScrollExtent;
+              final currentScroll = _scrollController.offset;
+              
+              // Smooth scroll to bottom if we're close (within 200 pixels)
+              if (maxScroll - currentScroll < 200) {
+                _scrollController.animateTo(
+                  maxScroll,
+                  duration: const Duration(milliseconds: 150),
+                  curve: Curves.linear,
+                );
+              }
             }
           });
         }
@@ -743,6 +827,224 @@ Based on the above current information and search results, please provide a comp
     }
   }
 
+  Future<void> _handleDiagramGeneration(String prompt) async {
+    if (prompt.trim().isEmpty) return;
+    
+    final userMessage = Message.user('Create a diagram: $prompt');
+    setState(() {
+      _messages.add(userMessage);
+      _isLoading = true;
+      // Reset auto-scroll for new message
+      _autoScrollEnabled = true;
+      _userIsScrolling = false;
+    });
+    
+    _scrollToBottom();
+    
+    try {
+      // Generate diagram using AI
+      final diagramPrompt = '''Create a Mermaid diagram for: $prompt
+      
+Requirements:
+1. Generate ONLY valid Mermaid code
+2. Start directly with the diagram type (graph, flowchart, sequenceDiagram, etc.)
+3. Do NOT include markdown code blocks or any explanations
+4. Make it clear and well-structured
+5. Use appropriate labels and connections
+
+Example formats:
+- Flowchart: graph TD or flowchart TD
+- Sequence: sequenceDiagram
+- Gantt: gantt
+- Pie: pie title
+- Class: classDiagram
+
+Generate the Mermaid code now:''';
+      
+      final stream = await ApiService.sendMessage(
+        message: diagramPrompt,
+        model: ModelService.instance.selectedModel,
+      );
+      
+      String mermaidCode = '';
+      await for (final chunk in stream) {
+        mermaidCode += chunk;
+      }
+      
+      // Extract and clean the Mermaid code
+      mermaidCode = DiagramService.extractMermaidCode(mermaidCode);
+      
+      // Fix common issues
+      if (mermaidCode.isNotEmpty) {
+        mermaidCode = DiagramService.fixCommonIssues(mermaidCode);
+      }
+      
+      // Add diagram message
+      final diagramMessage = DiagramMessage.assistant(
+        prompt: prompt,
+        mermaidCode: mermaidCode,
+      );
+      
+      setState(() {
+        _messages.add(diagramMessage);
+        _isLoading = false;
+      });
+      
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _messages.add(Message.error(
+          'Sorry, I encountered an error generating the diagram. Please try again.',
+        ));
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handlePresentationGeneration(String prompt) async {
+    if (prompt.trim().isEmpty) return;
+
+    final userMessage = Message.user('Create a presentation: $prompt');
+    setState(() {
+      _messages.add(userMessage);
+      _isLoading = true;
+      _autoScrollEnabled = true;
+      _userIsScrolling = false;
+    });
+
+    _scrollToBottom();
+
+    try {
+      final presentationPrompt = '''Create a comprehensive professional presentation about: $prompt
+
+Requirements:
+1. Generate a well-structured presentation with as many slides as needed to cover the topic thoroughly
+2. Each slide should have a clear title and content
+3. Use bullet points where appropriate for better readability
+4. Include speaker notes to provide additional context
+5. Make it engaging, informative, and comprehensive
+6. Cover all important aspects of the topic
+
+Format the response as follows:
+---SLIDE 1---
+Title: [Slide Title]
+Content: [Main content]
+Bullets:
+- Point 1
+- Point 2
+- Point 3
+Notes: [Speaker notes]
+
+---SLIDE 2---
+[Continue same format for all slides]
+
+Generate the complete presentation now:''';
+
+      final stream = await ApiService.sendMessage(
+        message: presentationPrompt,
+        model: ModelService.instance.selectedModel,
+      );
+
+      String fullResponse = '';
+      await for (final chunk in stream) {
+        fullResponse += chunk;
+      }
+
+      // Parse the response into slides
+      final slides = _parsePresentation(fullResponse);
+      
+      final presentationMessage = PresentationMessage.assistant(
+        prompt: prompt,
+        slides: slides,
+      );
+
+      setState(() {
+        _messages.add(presentationMessage);
+        _isLoading = false;
+      });
+
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _messages.add(Message.error(
+          'Sorry, I encountered an error generating the presentation. Please try again.',
+        ));
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<PresentationSlide> _parsePresentation(String response) {
+    final slides = <PresentationSlide>[];
+    final slideRegex = RegExp(r'---SLIDE\s*\d+---', multiLine: true);
+    final slideSections = response.split(slideRegex);
+    
+    for (final section in slideSections) {
+      if (section.trim().isEmpty) continue;
+      
+      String title = '';
+      String content = '';
+      List<String> bullets = [];
+      String notes = '';
+      
+      // Extract title
+      final titleMatch = RegExp(r'Title:\s*(.+)').firstMatch(section);
+      if (titleMatch != null) {
+        title = titleMatch.group(1)?.trim() ?? '';
+      }
+      
+      // Extract content
+      final contentMatch = RegExp(r'Content:\s*(.+?)(?=Bullets:|Notes:|$)', dotAll: true).firstMatch(section);
+      if (contentMatch != null) {
+        content = contentMatch.group(1)?.trim() ?? '';
+      }
+      
+      // Extract bullets
+      final bulletsMatch = RegExp(r'Bullets:\s*(.+?)(?=Notes:|$)', dotAll: true).firstMatch(section);
+      if (bulletsMatch != null) {
+        final bulletsText = bulletsMatch.group(1) ?? '';
+        bullets = bulletsText
+            .split('\n')
+            .where((line) => line.trim().startsWith('-') || line.trim().startsWith('•'))
+            .map((line) => line.replaceFirst(RegExp(r'^[-•]\s*'), '').trim())
+            .where((line) => line.isNotEmpty)
+            .toList();
+      }
+      
+      // Extract notes
+      final notesMatch = RegExp(r'Notes:\s*(.+)', dotAll: true).firstMatch(section);
+      if (notesMatch != null) {
+        notes = notesMatch.group(1)?.trim() ?? '';
+      }
+      
+      if (title.isNotEmpty || content.isNotEmpty) {
+        slides.add(PresentationSlide(
+          title: title.isNotEmpty ? title : 'Slide ${slides.length + 1}',
+          content: content,
+          bulletPoints: bullets.isNotEmpty ? bullets : null,
+          notes: notes.isNotEmpty ? notes : null,
+        ));
+      }
+    }
+    
+    // If no slides were parsed, try alternative format
+    if (slides.isEmpty) {
+      // Try to create slides from paragraphs
+      final paragraphs = response.split('\n\n');
+      for (int i = 0; i < paragraphs.length && i < 10; i++) {
+        final para = paragraphs[i].trim();
+        if (para.isNotEmpty) {
+          slides.add(PresentationSlide(
+            title: 'Slide ${i + 1}',
+            content: para,
+          ));
+        }
+      }
+    }
+    
+    return slides;
+  }
+
   Future<void> _handleImageModelResponse(
     String prompt,
     String model,
@@ -793,6 +1095,404 @@ Based on the above current information and search results, please provide a comp
           
           if (modelIndex == totalModels - 1) {
             _isLoading = false;
+          }
+        });
+      }
+    }
+  }
+
+  void _handleChartGeneration(String prompt) async {
+    if (!mounted) return;
+    
+    // Add user message
+    final userMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: prompt,
+      type: MessageType.user,
+      timestamp: DateTime.now(),
+    );
+    
+    setState(() {
+      _messages.add(userMessage);
+    });
+    
+    // Generate chart prompt
+    final chartPrompt = '''
+Generate a Chart.js configuration JSON for: $prompt
+
+Requirements:
+1. Return ONLY valid JSON configuration for Chart.js
+2. Include appropriate chart type (bar, line, pie, doughnut, radar, scatter)
+3. Use realistic sample data if not specified
+4. Include proper labels, colors, and options
+5. Make it visually appealing with good color schemes
+
+Format the response as:
+```json
+{
+  "type": "chart_type",
+  "data": { ... },
+  "options": { ... }
+}
+```
+''';
+    
+    // Stream AI response
+    String fullResponse = '';
+    final assistantMessage = ChartMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString() + '_chart',
+      prompt: prompt,
+      chartConfig: '',
+      timestamp: DateTime.now(),
+      isStreaming: true,
+    );
+    
+    setState(() {
+      _messages.add(assistantMessage);
+    });
+    
+    try {
+      // Get the selected model
+      final selectedModel = ModelService.instance.selectedModel;
+      
+      // Stream the response
+      final stream = await ApiService.sendMessage(
+        message: chartPrompt,
+        model: selectedModel,
+        conversationHistory: [],
+        systemPrompt: MessageModeService.instance.effectiveSystemPrompt,
+      );
+      
+      stream.listen(
+        (chunk) {
+          fullResponse += chunk;
+          
+          // Try to extract chart config as we stream
+          final config = ChartService.extractChartConfig(fullResponse);
+          if (config.isNotEmpty && mounted) {
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as ChartMessage).copyWith(
+                  chartConfig: config,
+                  isStreaming: true,
+                );
+              }
+            });
+          }
+        },
+        onDone: () {
+          if (mounted) {
+            // Final extraction
+            String finalConfig = ChartService.extractChartConfig(fullResponse);
+            
+            // If no valid config found, generate a sample
+            if (finalConfig.isEmpty) {
+              finalConfig = ChartService.generateSampleChart(prompt);
+            }
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as ChartMessage).copyWith(
+                  chartConfig: finalConfig,
+                  isStreaming: false,
+                );
+              }
+            });
+          }
+        },
+        onError: (error) {
+          if (mounted) {
+            // Generate a sample chart on error
+            final sampleConfig = ChartService.generateSampleChart(prompt);
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as ChartMessage).copyWith(
+                  chartConfig: sampleConfig,
+                  isStreaming: false,
+                  hasError: false, // Don't show error, just use sample
+                );
+              }
+            });
+          }
+        },
+      );
+    } catch (e) {
+      // Generate sample on exception
+      final sampleConfig = ChartService.generateSampleChart(prompt);
+      
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+          if (index != -1) {
+            _messages[index] = (assistantMessage as ChartMessage).copyWith(
+              chartConfig: sampleConfig,
+              isStreaming: false,
+            );
+          }
+        });
+      }
+    }
+  }
+
+  void _handleFlashcardGeneration(String prompt) async {
+    if (!mounted) return;
+    
+    // Add user message
+    final userMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: prompt,
+      type: MessageType.user,
+      timestamp: DateTime.now(),
+    );
+    
+    setState(() {
+      _messages.add(userMessage);
+    });
+    
+    // Generate flashcard prompt
+    final flashcardPrompt = '''
+Generate flashcards for: $prompt
+
+Create educational flashcards with questions and answers.
+Format as JSON array:
+[
+  {
+    "question": "Question text",
+    "answer": "Answer text",
+    "explanation": "Optional explanation"
+  }
+]
+
+Generate 5-10 flashcards covering key concepts.
+''';
+    
+    // Stream AI response
+    String fullResponse = '';
+    final assistantMessage = FlashcardMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString() + '_flashcard',
+      prompt: prompt,
+      flashcards: [],
+      timestamp: DateTime.now(),
+      isStreaming: true,
+    );
+    
+    setState(() {
+      _messages.add(assistantMessage);
+    });
+    
+    try {
+      final selectedModel = ModelService.instance.selectedModel;
+      final stream = await ApiService.sendMessage(
+        message: flashcardPrompt,
+        model: selectedModel,
+        conversationHistory: [],
+        systemPrompt: MessageModeService.instance.effectiveSystemPrompt,
+      );
+      
+      stream.listen(
+        (chunk) {
+          fullResponse += chunk;
+          
+          // Try to extract flashcards as we stream
+          final flashcards = FlashcardService.extractFlashcards(fullResponse);
+          if (flashcards.isNotEmpty && mounted) {
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as FlashcardMessage).copyWith(
+                  flashcards: flashcards,
+                  isStreaming: true,
+                );
+              }
+            });
+          }
+        },
+        onDone: () {
+          if (mounted) {
+            // Final extraction
+            List<FlashcardItem> finalFlashcards = FlashcardService.extractFlashcards(fullResponse);
+            
+            // If no flashcards found, generate samples
+            if (finalFlashcards.isEmpty) {
+              finalFlashcards = FlashcardService.generateSampleFlashcards(prompt);
+            }
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as FlashcardMessage).copyWith(
+                  flashcards: finalFlashcards,
+                  isStreaming: false,
+                );
+              }
+            });
+          }
+        },
+        onError: (error) {
+          if (mounted) {
+            // Generate sample flashcards on error
+            final sampleFlashcards = FlashcardService.generateSampleFlashcards(prompt);
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as FlashcardMessage).copyWith(
+                  flashcards: sampleFlashcards,
+                  isStreaming: false,
+                  hasError: false,
+                );
+              }
+            });
+          }
+        },
+      );
+    } catch (e) {
+      // Generate sample on exception
+      final sampleFlashcards = FlashcardService.generateSampleFlashcards(prompt);
+      
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+          if (index != -1) {
+            _messages[index] = (assistantMessage as FlashcardMessage).copyWith(
+              flashcards: sampleFlashcards,
+              isStreaming: false,
+            );
+          }
+        });
+      }
+    }
+  }
+
+  void _handleQuizGeneration(String prompt) async {
+    if (!mounted) return;
+    
+    // Add user message
+    final userMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: prompt,
+      type: MessageType.user,
+      timestamp: DateTime.now(),
+    );
+    
+    setState(() {
+      _messages.add(userMessage);
+    });
+    
+    // Generate quiz prompt
+    final quizPrompt = '''
+Generate a quiz for: $prompt
+
+Create multiple-choice questions with 4 options each.
+Format as JSON array:
+[
+  {
+    "question": "Question text",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": 0,
+    "explanation": "Why this answer is correct"
+  }
+]
+
+Generate 5-10 questions. The correctAnswer is the index (0-3) of the correct option.
+''';
+    
+    // Stream AI response
+    String fullResponse = '';
+    final assistantMessage = QuizMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString() + '_quiz',
+      prompt: prompt,
+      questions: [],
+      timestamp: DateTime.now(),
+      isStreaming: true,
+    );
+    
+    setState(() {
+      _messages.add(assistantMessage);
+    });
+    
+    try {
+      final selectedModel = ModelService.instance.selectedModel;
+      final stream = await ApiService.sendMessage(
+        message: quizPrompt,
+        model: selectedModel,
+        conversationHistory: [],
+        systemPrompt: MessageModeService.instance.effectiveSystemPrompt,
+      );
+      
+      stream.listen(
+        (chunk) {
+          fullResponse += chunk;
+          
+          // Try to extract quiz questions as we stream
+          final questions = QuizService.extractQuizQuestions(fullResponse);
+          if (questions.isNotEmpty && mounted) {
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as QuizMessage).copyWith(
+                  questions: questions,
+                  isStreaming: true,
+                );
+              }
+            });
+          }
+        },
+        onDone: () {
+          if (mounted) {
+            // Final extraction
+            List<QuizQuestion> finalQuestions = QuizService.extractQuizQuestions(fullResponse);
+            
+            // If no questions found, generate samples
+            if (finalQuestions.isEmpty) {
+              finalQuestions = QuizService.generateSampleQuiz(prompt);
+            }
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as QuizMessage).copyWith(
+                  questions: finalQuestions,
+                  isStreaming: false,
+                );
+              }
+            });
+          }
+        },
+        onError: (error) {
+          if (mounted) {
+            // Generate sample quiz on error
+            final sampleQuestions = QuizService.generateSampleQuiz(prompt);
+            
+            setState(() {
+              final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+              if (index != -1) {
+                _messages[index] = (assistantMessage as QuizMessage).copyWith(
+                  questions: sampleQuestions,
+                  isStreaming: false,
+                  hasError: false,
+                );
+              }
+            });
+          }
+        },
+      );
+    } catch (e) {
+      // Generate sample on exception
+      final sampleQuestions = QuizService.generateSampleQuiz(prompt);
+      
+      if (mounted) {
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == assistantMessage.id);
+          if (index != -1) {
+            _messages[index] = (assistantMessage as QuizMessage).copyWith(
+              questions: sampleQuestions,
+              isStreaming: false,
+            );
           }
         });
       }

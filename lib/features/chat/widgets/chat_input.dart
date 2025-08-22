@@ -12,6 +12,11 @@ class ChatInput extends StatefulWidget {
   final TextEditingController? controller;
   final Function(String, {bool useWebSearch}) onSendMessage;
   final Function(String)? onGenerateImage;
+  final Function(String)? onGenerateDiagram;
+  final Function(String)? onGeneratePresentation;
+  final Function(String)? onGenerateChart;
+  final Function(String)? onGenerateFlashcards;
+  final Function(String)? onGenerateQuiz;
   final Function(String, String)? onVisionAnalysis;
   final VoidCallback? onStopStreaming;
   final VoidCallback? onTemplateRequest;
@@ -24,6 +29,11 @@ class ChatInput extends StatefulWidget {
     this.controller,
     required this.onSendMessage,
     this.onGenerateImage,
+    this.onGenerateDiagram,
+    this.onGeneratePresentation,
+    this.onGenerateChart,
+    this.onGenerateFlashcards,
+    this.onGenerateQuiz,
     this.onVisionAnalysis,
     this.onStopStreaming,
     this.onTemplateRequest,
@@ -44,6 +54,11 @@ class _ChatInputState extends State<ChatInput> {
   bool _showEnhancerSuggestion = false;
   bool _webSearchEnabled = false;
   bool _imageGenerationMode = false;
+  bool _diagramGenerationMode = false;
+  bool _presentationGenerationMode = false;
+  bool _chartGenerationMode = false;
+  bool _flashcardGenerationMode = false;
+  bool _quizGenerationMode = false;
   String? _pendingImageData;
   Timer? _typingTimer;
 
@@ -182,15 +197,42 @@ class _ChatInputState extends State<ChatInput> {
           child: SafeArea(
             child: Row(
               children: [
-                // Extensions button
-                IconButton(
-                  onPressed: _showExtensionsSheet,
-                  icon: Icon(
-                    Icons.extension_outlined,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                    size: 24,
-                  ),
-                  tooltip: 'Extensions',
+                // Extensions button with close option
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: _showExtensionsSheet,
+                      icon: Icon(
+                        Icons.extension_outlined,
+                        color: _isAnyExtensionActive() 
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        size: 24,
+                      ),
+                      tooltip: 'Extensions',
+                    ),
+                    if (_isAnyExtensionActive())
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: _clearAllExtensions,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 10,
+                              color: Theme.of(context).colorScheme.onError,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 
                 // Text input - no background
@@ -208,8 +250,18 @@ class _ChatInputState extends State<ChatInput> {
                           ? (_pendingImageData != null
                               ? '📸 Ask something about the uploaded image...'
                               : _imageGenerationMode 
-                                  ? 'Describe the image you want to generate...' 
-                                  : 'Type your message...') 
+                                  ? 'Describe the image you want to generate...'
+                                  : _diagramGenerationMode
+                                      ? 'Describe the diagram you want to create...'
+                                      : _presentationGenerationMode
+                                          ? 'Describe the presentation topic...'
+                                          : _chartGenerationMode
+                                              ? 'Describe the chart or graph you want...'
+                                              : _flashcardGenerationMode
+                                                  ? 'What topic for flashcards?'
+                                                  : _quizGenerationMode
+                                                      ? 'What topic for the quiz?'
+                                                      : 'Type your message...') 
                           : 'Select a model to start chatting',
                       hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
@@ -243,21 +295,17 @@ class _ChatInputState extends State<ChatInput> {
                             : Theme.of(context).colorScheme.outline.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(24),
                     child: InkWell(
-                      onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : _handleSend) : null),
+                      onTap: widget.isLoading ? _handleStop : (_canSend ? (_imageGenerationMode ? _handleImageGenerationDirect : (_diagramGenerationMode ? _handleDiagramGenerationDirect : (_presentationGenerationMode ? _handlePresentationGenerationDirect : (_chartGenerationMode ? _handleChartGenerationDirect : (_flashcardGenerationMode ? _handleFlashcardGenerationDirect : (_quizGenerationMode ? _handleQuizGenerationDirect : _handleSend)))))) : null),
                       borderRadius: BorderRadius.circular(24),
-                      child: Container(
+                      child: SizedBox(
                         width: 48,
                         height: 48,
-                        child: Icon(
-                          widget.isLoading
-                              ? Icons.stop_rounded
-                              : (_imageGenerationMode ? Icons.auto_awesome_outlined : Icons.arrow_upward_rounded),
-                          color: widget.isLoading
-                              ? Colors.white
-                              : (_canSend
-                                  ? Theme.of(context).colorScheme.onPrimary
-                                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
-                          size: 20,
+                        child: Center(
+                          child: Icon(
+                            _getButtonIcon(),
+                            color: _getButtonIconColor(context),
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -266,7 +314,7 @@ class _ChatInputState extends State<ChatInput> {
               ],
             ),
           ),
-                  ),
+        ),
       ],
     );
   }
@@ -280,9 +328,62 @@ class _ChatInputState extends State<ChatInput> {
     if (prompt.isNotEmpty && widget.onGenerateImage != null) {
       widget.onGenerateImage!(prompt);
       _controller.clear();
-      setState(() {
-        _imageGenerationMode = false;
-      });
+      // Keep mode active - user must manually turn it off
+      _updateSendButton();
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _handleDiagramGenerationDirect() {
+    final prompt = _controller.text.trim();
+    if (prompt.isNotEmpty && widget.onGenerateDiagram != null) {
+      widget.onGenerateDiagram!(prompt);
+      _controller.clear();
+      // Keep mode active - user must manually turn it off
+      _updateSendButton();
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _handlePresentationGenerationDirect() {
+    final prompt = _controller.text.trim();
+    if (prompt.isNotEmpty && widget.onGeneratePresentation != null) {
+      widget.onGeneratePresentation!(prompt);
+      _controller.clear();
+      // Keep mode active - user must manually turn it off
+      _updateSendButton();
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _handleChartGenerationDirect() {
+    final prompt = _controller.text.trim();
+    if (prompt.isNotEmpty && widget.onGenerateChart != null) {
+      widget.onGenerateChart!(prompt);
+      _controller.clear();
+      // Keep mode active - user must manually turn it off
+      _updateSendButton();
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _handleFlashcardGenerationDirect() {
+    final prompt = _controller.text.trim();
+    if (prompt.isNotEmpty && widget.onGenerateFlashcards != null) {
+      widget.onGenerateFlashcards!(prompt);
+      _controller.clear();
+      // Keep mode active - user must manually turn it off
+      _updateSendButton();
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _handleQuizGenerationDirect() {
+    final prompt = _controller.text.trim();
+    if (prompt.isNotEmpty && widget.onGenerateQuiz != null) {
+      widget.onGenerateQuiz!(prompt);
+      _controller.clear();
+      // Keep mode active - user must manually turn it off
       _updateSendButton();
       HapticFeedback.lightImpact();
     }
@@ -296,6 +397,11 @@ class _ChatInputState extends State<ChatInput> {
       builder: (context) => _ExtensionsBottomSheet(
         webSearchEnabled: _webSearchEnabled,
         imageGenerationMode: _imageGenerationMode,
+        diagramGenerationMode: _diagramGenerationMode,
+        presentationGenerationMode: _presentationGenerationMode,
+        chartGenerationMode: _chartGenerationMode,
+        flashcardGenerationMode: _flashcardGenerationMode,
+        quizGenerationMode: _quizGenerationMode,
         onImageUpload: () async {
           Navigator.pop(context);
           await _handleImageUpload();
@@ -303,14 +409,28 @@ class _ChatInputState extends State<ChatInput> {
         onWebSearchToggle: (enabled) {
           setState(() {
             _webSearchEnabled = enabled;
-            if (enabled) _imageGenerationMode = false;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _diagramGenerationMode = false;
+              _presentationGenerationMode = false;
+              _chartGenerationMode = false;
+              _flashcardGenerationMode = false;
+              _quizGenerationMode = false;
+            }
           });
           Navigator.pop(context);
         },
         onImageModeToggle: (enabled) {
           setState(() {
             _imageGenerationMode = enabled;
-            if (enabled) _webSearchEnabled = false;
+            if (enabled) {
+              _webSearchEnabled = false;
+              _diagramGenerationMode = false;
+              _presentationGenerationMode = false;
+              _chartGenerationMode = false;
+              _flashcardGenerationMode = false;
+              _quizGenerationMode = false;
+            }
           });
           Navigator.pop(context);
         },
@@ -318,9 +438,81 @@ class _ChatInputState extends State<ChatInput> {
           Navigator.pop(context);
           _showPromptEnhancer();
         },
+        onDiagramToggle: (enabled) {
+          setState(() {
+            _diagramGenerationMode = enabled;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _webSearchEnabled = false;
+              _presentationGenerationMode = false;
+              _chartGenerationMode = false;
+              _flashcardGenerationMode = false;
+              _quizGenerationMode = false;
+            }
+          });
+          Navigator.pop(context);
+        },
+        onPresentationToggle: (enabled) {
+          setState(() {
+            _presentationGenerationMode = enabled;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _webSearchEnabled = false;
+              _diagramGenerationMode = false;
+              _chartGenerationMode = false;
+              _flashcardGenerationMode = false;
+              _quizGenerationMode = false;
+            }
+          });
+          Navigator.pop(context);
+        },
+        onChartToggle: (enabled) {
+          setState(() {
+            _chartGenerationMode = enabled;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _webSearchEnabled = false;
+              _diagramGenerationMode = false;
+              _presentationGenerationMode = false;
+              _flashcardGenerationMode = false;
+              _quizGenerationMode = false;
+            }
+          });
+          Navigator.pop(context);
+        },
+        onFlashcardToggle: (enabled) {
+          setState(() {
+            _flashcardGenerationMode = enabled;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _webSearchEnabled = false;
+              _diagramGenerationMode = false;
+              _presentationGenerationMode = false;
+              _chartGenerationMode = false;
+              _quizGenerationMode = false;
+            }
+          });
+          Navigator.pop(context);
+        },
+        onQuizToggle: (enabled) {
+          setState(() {
+            _quizGenerationMode = enabled;
+            if (enabled) {
+              _imageGenerationMode = false;
+              _webSearchEnabled = false;
+              _diagramGenerationMode = false;
+              _presentationGenerationMode = false;
+              _chartGenerationMode = false;
+              _flashcardGenerationMode = false;
+            }
+          });
+          Navigator.pop(context);
+        },
       ),
     );
   }
+
+
 
   Future<void> _handleImageUpload() async {
     try {
@@ -371,22 +563,100 @@ class _ChatInputState extends State<ChatInput> {
       );
     }
   }
+
+  bool _isAnyExtensionActive() {
+    return _imageGenerationMode || 
+           _diagramGenerationMode || 
+           _presentationGenerationMode || 
+           _chartGenerationMode || 
+           _flashcardGenerationMode || 
+           _quizGenerationMode ||
+           _webSearchEnabled;
+  }
+  
+  void _clearAllExtensions() {
+    setState(() {
+      _imageGenerationMode = false;
+      _diagramGenerationMode = false;
+      _presentationGenerationMode = false;
+      _chartGenerationMode = false;
+      _flashcardGenerationMode = false;
+      _quizGenerationMode = false;
+      _webSearchEnabled = false;
+    });
+    _updateSendButton();
+  }
+
+  IconData _getButtonIcon() {
+    if (widget.isLoading) {
+      return Icons.stop_rounded;
+    }
+    if (_imageGenerationMode) {
+      return Icons.auto_awesome_outlined;
+    }
+    if (_diagramGenerationMode) {
+      return Icons.account_tree_outlined;
+    }
+    if (_presentationGenerationMode) {
+      return Icons.slideshow_outlined;
+    }
+    if (_chartGenerationMode) {
+      return Icons.bar_chart_outlined;
+    }
+    if (_flashcardGenerationMode) {
+      return Icons.style_outlined;
+    }
+    if (_quizGenerationMode) {
+      return Icons.quiz_outlined;
+    }
+    return Icons.arrow_upward_rounded;
+  }
+
+  Color _getButtonIconColor(BuildContext context) {
+    if (widget.isLoading) {
+      return Colors.white;
+    }
+    if (_canSend) {
+      return Theme.of(context).colorScheme.onPrimary;
+    }
+    return Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
+  }
 }
 
 class _ExtensionsBottomSheet extends StatelessWidget {
   final bool webSearchEnabled;
   final bool imageGenerationMode;
+  final bool diagramGenerationMode;
+  final bool presentationGenerationMode;
+  final bool chartGenerationMode;
+  final bool flashcardGenerationMode;
+  final bool quizGenerationMode;
   final VoidCallback onImageUpload;
   final Function(bool) onWebSearchToggle;
   final Function(bool) onImageModeToggle;
+  final Function(bool) onDiagramToggle;
+  final Function(bool) onPresentationToggle;
+  final Function(bool) onChartToggle;
+  final Function(bool) onFlashcardToggle;
+  final Function(bool) onQuizToggle;
   final VoidCallback onEnhancePrompt;
 
   const _ExtensionsBottomSheet({
     required this.webSearchEnabled,
     required this.imageGenerationMode,
+    this.diagramGenerationMode = false,
+    this.presentationGenerationMode = false,
+    this.chartGenerationMode = false,
+    this.flashcardGenerationMode = false,
+    this.quizGenerationMode = false,
     required this.onImageUpload,
     required this.onWebSearchToggle,
     required this.onImageModeToggle,
+    required this.onDiagramToggle,
+    required this.onPresentationToggle,
+    required this.onChartToggle,
+    required this.onFlashcardToggle,
+    required this.onQuizToggle,
     required this.onEnhancePrompt,
   });
 
@@ -419,53 +689,114 @@ class _ExtensionsBottomSheet extends StatelessWidget {
             ),
           ),
           
-          // Options
+          // Options in grid layout
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+            padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // Image Upload & Analysis
-                _ExtensionTile(
-                  icon: Icons.photo_camera_outlined,
-                  title: 'Analyse Image',
-                  subtitle: '',
-                  iconSize: 24,
-                  onTap: onImageUpload,
+                // First row
+                Row(
+                  children: [
+                    Expanded(
+                      child: _CompactExtensionTile(
+                        icon: Icons.photo_camera_outlined,
+                        title: 'Analyze',
+                        onTap: onImageUpload,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CompactExtensionTile(
+                        icon: Icons.auto_fix_high,
+                        title: 'Enhance',
+                        onTap: onEnhancePrompt,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.search_outlined,
+                        title: 'Search',
+                        subtitle: '',
+                        isToggled: webSearchEnabled,
+                        onTap: () => onWebSearchToggle(!webSearchEnabled),
+                      ),
+                    ),
+                  ],
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 
-                // Enhance Prompt
-                _ExtensionTile(
-                  icon: Icons.auto_fix_high,
-                  title: 'Enhance Prompt',
-                  subtitle: 'Improve your prompt with AI for better results',
-                  iconSize: 20,
-                  onTap: onEnhancePrompt,
+                // Second row - Generation modes
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.auto_awesome_outlined,
+                        title: 'Image',
+                        subtitle: '',
+                        isToggled: imageGenerationMode,
+                        onTap: () => onImageModeToggle(!imageGenerationMode),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.account_tree_outlined,
+                        title: 'Diagram',
+                        subtitle: '',
+                        isToggled: diagramGenerationMode,
+                        onTap: () => onDiagramToggle(!diagramGenerationMode),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.bar_chart_outlined,
+                        title: 'Chart',
+                        subtitle: '',
+                        isToggled: chartGenerationMode,
+                        onTap: () => onChartToggle(!chartGenerationMode),
+                      ),
+                    ),
+                  ],
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 
-                // Web Search
-                _ExtensionTile(
-                  icon: Icons.search_outlined,
-                  title: 'Web Search',
-                  subtitle: 'Include real-time web search in responses',
-                  isToggled: webSearchEnabled,
-                  iconSize: 20,
-                  onTap: () => onWebSearchToggle(!webSearchEnabled),
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Image Generation
-                _ExtensionTile(
-                  icon: Icons.auto_awesome_outlined,
-                  title: 'Image Generation',
-                  subtitle: 'Generate images from text descriptions',
-                  isToggled: imageGenerationMode,
-                  iconSize: 20,
-                  onTap: () => onImageModeToggle(!imageGenerationMode),
+                // Third row - Presentation, Flashcards, Quiz
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.slideshow_outlined,
+                        title: 'Presentation',
+                        subtitle: '',
+                        isToggled: presentationGenerationMode,
+                        onTap: () => onPresentationToggle(!presentationGenerationMode),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.style_outlined,
+                        title: 'Flashcards',
+                        subtitle: '',
+                        isToggled: flashcardGenerationMode,
+                        onTap: () => onFlashcardToggle(!flashcardGenerationMode),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ExtensionTile(
+                        icon: Icons.quiz_outlined,
+                        title: 'Quiz',
+                        subtitle: '',
+                        isToggled: quizGenerationMode,
+                        onTap: () => onQuizToggle(!quizGenerationMode),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -482,6 +813,7 @@ class _ExtensionTile extends StatelessWidget {
   final String subtitle;
   final bool isToggled;
   final double iconSize;
+  final bool compact;
   final VoidCallback onTap;
 
   const _ExtensionTile({
@@ -490,6 +822,7 @@ class _ExtensionTile extends StatelessWidget {
     required this.subtitle,
     this.isToggled = false,
     this.iconSize = 20,
+    this.compact = false,
     required this.onTap,
   });
 
@@ -506,56 +839,86 @@ class _ExtensionTile extends StatelessWidget {
           HapticFeedback.selectionClick();
         },
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isToggled
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
-                      : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: iconSize,
-                ),
+              Icon(
+                icon,
+                color: isToggled
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                size: 24,
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isToggled
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
-                  ],
+              if (title.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: isToggled ? FontWeight.w600 : FontWeight.w500,
+                    color: isToggled
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactExtensionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  const _CompactExtensionTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () {
+          onTap();
+          HapticFeedback.selectionClick();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: Theme.of(context).colorScheme.primary,
               ),
-              if (isToggled)
-                Icon(
-                  Icons.check_circle,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 24,
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
@@ -625,3 +988,4 @@ class _ImageSourceSelector extends StatelessWidget {
     );
   }
 }
+

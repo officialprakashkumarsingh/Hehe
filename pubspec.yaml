@@ -33,6 +33,7 @@ dependencies:
   flutter_web_auth_2: ^4.1.0
   webview_flutter: ^4.4.2
   flutter_svg: ^2.1.0
+  flutter_highlight: ^0.7.0
 
 dev_dependencies:
   flutter_test:
